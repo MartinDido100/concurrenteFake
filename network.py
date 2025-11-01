@@ -16,6 +16,7 @@ class NetworkManager:
         self.on_game_update = None
         self.on_shot_result = None
         self.on_game_over = None
+        self.on_server_disconnect = None
         
     def connect_to_server(self, host=None, port=None):
         """Intentar conectar al servidor"""
@@ -50,7 +51,7 @@ class NetworkManager:
     def send_message(self, message_type, data=None):
         """Enviar mensaje al servidor"""
         if not self.connected:
-            print(" No conectado al servidor")
+            print("❌ No conectado al servidor")
             return False
             
         try:
@@ -64,6 +65,18 @@ class NetworkManager:
             self.socket.send(message_json.encode('utf-8'))
             print(f"✅ Mensaje enviado exitosamente")
             return True
+        except ConnectionResetError:
+            print("🔌 Error: Servidor desconectado durante envío")
+            self.connected = False
+            if self.on_server_disconnect:
+                self.on_server_disconnect()
+            return False
+        except ConnectionAbortedError:
+            print("🔌 Error: Conexión abortada durante envío")
+            self.connected = False
+            if self.on_server_disconnect:
+                self.on_server_disconnect()
+            return False
         except Exception as e:
             print(f"❌ Error enviando mensaje: {e}")
             return False
@@ -86,12 +99,26 @@ class NetworkManager:
                             except json.JSONDecodeError as e:
                                 print(f"Error decodificando JSON: {e}")
                 else:
+                    # El servidor cerró la conexión
+                    print("🔌 Servidor desconectado - No se recibieron más datos")
                     break
+            except ConnectionResetError:
+                print("🔌 Servidor desconectado - Conexión resetteada")
+                break
+            except ConnectionAbortedError:
+                print("🔌 Servidor desconectado - Conexión abortada")
+                break
             except Exception as e:
-                print(f"Error recibiendo mensaje: {e}")
+                print(f"❌ Error recibiendo mensaje: {e}")
                 break
         
+        # Marcar como desconectado y notificar
         self.connected = False
+        if self.on_server_disconnect:
+            print("📞 Notificando desconexión del servidor")
+            self.on_server_disconnect()
+        else:
+            print("⚠️ No hay callback configurado para server_disconnect")
     
     def handle_server_message(self, message):
         """Manejar mensajes recibidos del servidor"""
@@ -126,6 +153,19 @@ class NetworkManager:
         elif message_type == 'game_over':
             if self.on_game_over:
                 self.on_game_over(data)
+        
+        elif message_type == 'player_disconnect':
+            # Un jugador se desconectó durante la partida
+            print(f"🔌 MENSAJE PLAYER_DISCONNECT RECIBIDO: {data}")
+            disconnected_player = data.get('disconnected_player', 'desconocido')
+            message = data.get('message', 'Jugador desconectado')
+            print(f"🔌 {message} (Jugador: {disconnected_player})")
+            
+            if self.on_server_disconnect:
+                print("📞 Llamando callback de desconexión por jugador desconectado")
+                self.on_server_disconnect()
+            else:
+                print("⚠️ No hay callback configurado para player_disconnect")
         
         elif message_type == 'error':
             error_msg = data.get('error', 'Error desconocido')
@@ -172,3 +212,7 @@ class NetworkManager:
     def set_game_over_callback(self, callback):
         """Establecer callback para fin del juego"""
         self.on_game_over = callback
+    
+    def set_server_disconnect_callback(self, callback):
+        """Establecer callback para cuando se desconecte el servidor"""
+        self.on_server_disconnect = callback

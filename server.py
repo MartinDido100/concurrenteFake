@@ -45,11 +45,19 @@ class Player:
                 'data': data
             }
             message_json = json.dumps(message) + '\n'
+            logger.info(f"📤 Enviando mensaje {message_type.value} a {self.player_id}: {data}")
             self.writer.write(message_json.encode('utf-8'))
             await self.writer.drain()
+            logger.info(f"✅ Mensaje enviado exitosamente a {self.player_id}")
             return True
+        except ConnectionResetError:
+            logger.error(f"🔌 Cliente {self.player_id} desconectado durante envío")
+            return False
+        except BrokenPipeError:
+            logger.error(f"🔌 Conexión rota con {self.player_id}")
+            return False
         except Exception as e:
-            logger.error(f"Error enviando mensaje a {self.player_id}: {e}")
+            logger.error(f"❌ Error enviando mensaje a {self.player_id}: {e}")
             return False
     
     def place_ship(self, positions: List[tuple]):
@@ -59,10 +67,10 @@ class Player:
                 self.grid[y][x] = 1
         self.ships.append(positions)
     
-    def receive_shot(self, x: int, y: int) -> str:
-        """Procesar disparo recibido. Retorna 'hit', 'miss', o 'sunk'"""
+    def receive_shot(self, x: int, y: int) -> tuple:
+        """Procesar disparo recibido. Retorna (resultado, nombre_barco_si_hundido)"""
         if not (0 <= x < 10 and 0 <= y < 10):
-            return 'miss'
+            return ('miss', None)
         
         if self.grid[y][x] == 1:  # Barco
             self.grid[y][x] = 2  # Marcar como golpeado
@@ -73,13 +81,29 @@ class Player:
                 if (x, y) in ship_positions:
                     # Verificar si todas las posiciones del barco fueron golpeadas
                     if all((sx, sy) in self.hits_received for sx, sy in ship_positions):
-                        return 'sunk'
+                        # Determinar el nombre del barco según su tamaño
+                        ship_size = len(ship_positions)
+                        ship_name = self.get_ship_name_by_size(ship_size)
+                        return ('sunk', ship_name)
                     break
-            return 'hit'
+            return ('hit', None)
         else:
             if self.grid[y][x] == 0:  # Agua
                 self.grid[y][x] = 3  # Marcar agua como golpeada
-            return 'miss'
+            return ('miss', None)
+    
+    def get_ship_name_by_size(self, size: int) -> str:
+        """Obtener el nombre del barco según su tamaño"""
+        if size == 5:
+            return "Portaaviones"
+        elif size == 4:
+            return "Destructor Acorazado"
+        elif size == 3:
+            return "Barco de Ataque"
+        elif size == 2:
+            return "Lancha Rapida"
+        else:
+            return f"Barco de {size} casillas"
     
     def all_ships_sunk(self) -> bool:
         """Verificar si todos los barcos fueron hundidos"""
@@ -132,31 +156,56 @@ class BattleshipServer:
         await self.broadcast_players_status()
         
         try:
-            # Manejar mensajes del cliente
-            async for line in reader:
-                raw_data = line.decode('utf-8').strip()
-                logger.info(f"📨 Datos recibidos de {player_id}: '{raw_data}'")
-                
-                if not raw_data:
-                    logger.warning(f"⚠️ Línea vacía recibida de {player_id}")
-                    continue
+            # Configurar un timeout para detectar desconexiones más rápido
+            while self.players.get(player_id) is not None:
                 try:
-                    message = json.loads(raw_data)
-                    logger.info(f"✅ Mensaje JSON válido de {player_id}: {message}")
-                    await self.process_message(player_id, message)
-                except json.JSONDecodeError as e:
-                    logger.error(f"❌ Mensaje JSON inválido de {player_id}: '{raw_data}' - Error: {e}")
+                    # Leer con timeout para detectar desconexiones
+                    line = await asyncio.wait_for(reader.readline(), timeout=1.0)
+                    
+                    if not line:
+                        # Cliente desconectado - no hay más datos
+                        logger.info(f"🔌 Cliente {player_id} desconectado - no hay más datos")
+                        break
+                    
+                    raw_data = line.decode('utf-8').strip()
+                    logger.info(f"📨 Datos recibidos de {player_id}: '{raw_data}'")
+                    
+                    if not raw_data:
+                        logger.warning(f"⚠️ Línea vacía recibida de {player_id}")
+                        continue
+                    
+                    try:
+                        message = json.loads(raw_data)
+                        logger.info(f"✅ Mensaje JSON válido de {player_id}: {message}")
+                        await self.process_message(player_id, message)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"❌ Mensaje JSON inválido de {player_id}: '{raw_data}' - Error: {e}")
+                    except Exception as e:
+                        logger.error(f"❌ Error procesando mensaje de {player_id}: {e}")
+                        
+                except asyncio.TimeoutError:
+                    # Timeout normal - continuar el bucle
+                    continue
+                except ConnectionResetError:
+                    logger.info(f"🔌 Cliente {player_id} cerró la conexión inesperadamente")
+                    break
                 except Exception as e:
-                    logger.error(f"❌ Error procesando mensaje de {player_id}: {e}")
+                    logger.error(f"❌ Error leyendo de {player_id}: {e}")
+                    break
         
         except asyncio.CancelledError:
-            pass
+            logger.info(f"🔌 Conexión con {player_id} cancelada")
         except Exception as e:
-            logger.error(f"Error en conexión con {player_id}: {e}")
+            logger.error(f"❌ Error en conexión con {player_id}: {e}")
         finally:
             # Limpiar cuando el cliente se desconecta
+            logger.info(f"🧹 Limpiando conexión de {player_id}")
             await self.disconnect_player(player_id)
-            writer.close()
+            try:
+                writer.close()
+                await writer.wait_closed()
+            except Exception as e:
+                logger.error(f"Error cerrando conexión: {e}")
     
     async def send_error(self, writer: asyncio.StreamWriter, error_message: str):
         """Enviar mensaje de error"""
@@ -174,11 +223,46 @@ class BattleshipServer:
     async def disconnect_player(self, player_id: str):
         """Desconectar jugador"""
         if player_id in self.players:
-            logger.info(f"Jugador {player_id} desconectado")
+            logger.info(f"🔌 DESCONECTANDO JUGADOR {player_id}")
+            logger.info(f"📊 Estado actual del juego: {self.game_state}")
+            logger.info(f"👥 Jugadores antes de desconexión: {list(self.players.keys())}")
+            
+            # Si el juego estaba activo, notificar al otro jugador sobre la desconexión
+            if self.game_state in [GameState.PLACEMENT_PHASE, GameState.BATTLE_PHASE] and len(self.players) == 2:
+                logger.info(f"🎮 Juego activo detectado - notificando al otro jugador")
+                
+                # Encontrar al otro jugador
+                other_player_id = None
+                for pid in self.players:
+                    if pid != player_id:
+                        other_player_id = pid
+                        break
+                
+                if other_player_id:
+                    other_player = self.players[other_player_id]
+                    logger.info(f"📤 Enviando notificación de desconexión a {other_player_id}")
+                    
+                    success = await other_player.send_message(MessageType.PLAYER_DISCONNECT, {
+                        'disconnected_player': player_id,
+                        'message': 'Tu oponente se ha desconectado',
+                        'return_to_menu': True
+                    })
+                    
+                    if success:
+                        logger.info(f"✅ Notificación enviada exitosamente a {other_player_id}")
+                    else:
+                        logger.error(f"❌ Error enviando notificación a {other_player_id}")
+                else:
+                    logger.warning(f"⚠️ No se encontró otro jugador para notificar")
+            else:
+                logger.info(f"📝 No se requiere notificación - estado: {self.game_state}, jugadores: {len(self.players)}")
+            
             del self.players[player_id]
+            logger.info(f"👥 Jugadores después de desconexión: {list(self.players.keys())}")
             
             # Resetear estado del juego si no hay suficientes jugadores
             if len(self.players) < 2:
+                logger.info(f"🔄 Reseteando estado del juego - jugadores insuficientes")
                 self.game_state = GameState.WAITING_PLAYERS
                 self.current_turn = None
             
@@ -271,12 +355,13 @@ class BattleshipServer:
             return
         
         opponent = self.players[opponent_id]
-        result = opponent.receive_shot(x, y)
+        result, sunk_ship_name = opponent.receive_shot(x, y)
         
         # Enviar resultado del disparo
         shot_data = {
             'x': x, 'y': y, 'result': result,
-            'shooter': shooter_id, 'target': opponent_id
+            'shooter': shooter_id, 'target': opponent_id,
+            'sunk_ship_name': sunk_ship_name
         }
         
         for player in self.players.values():

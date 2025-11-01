@@ -59,8 +59,8 @@ class MenuScreen:
         # Botón de mute (esquina superior derecha)
         self.mute_button = {
             'rect': pygame.Rect(self.width - 120, 20, 100, 40),
-            'text': '🔊 MÚSICA',
-            'text_muted': '🔇 SILENCIO',
+            'text': 'Silenciar',
+            'text_muted': 'Musica',
             'color': (70, 70, 70),
             'hover_color': (100, 100, 100),
             'text_color': (255, 255, 255)

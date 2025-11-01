@@ -858,6 +858,12 @@ class GameScreen:
         shooter = data.get('shooter')
         sunk_ship_name = data.get('sunk_ship_name')  # Nombre del barco hundido (si aplica)
         
+        # Reproducir sonido según el resultado
+        if result == 'hit' or result == 'sunk':
+            self.play_missile_sound()
+        elif result == 'miss':
+            self.play_water_splash_sound()
+        
         if shooter == self.network_manager.player_id:
             # Mi disparo - registrar en el tablero enemigo
             self.enemy_board.shots[(x, y)] = result
@@ -893,3 +899,29 @@ class GameScreen:
     def start_battle_phase(self):
         print("🚀 Iniciando fase de batalla...")
         self.game_phase = "battle"
+    
+    def play_missile_sound(self):
+        """Reproducir sonido de impacto de misil"""
+        try:
+            missile_sound_path = os.path.join("assets", "sounds", "misil.mp3")
+            missile_sound = pygame.mixer.Sound(missile_sound_path)
+            missile_sound.set_volume(0.3)  # Volumen reducido al 30% para evitar saturación
+            missile_sound.play()
+            print("🔊 Reproduciendo sonido de impacto de misil")
+        except pygame.error as e:
+            print(f"❌ Error al reproducir sonido de misil: {e}")
+        except FileNotFoundError:
+            print("❌ No se encontró el archivo misil.mp3")
+    
+    def play_water_splash_sound(self):
+        """Reproducir sonido de salpicadura de agua cuando se falla"""
+        try:
+            splash_sound_path = os.path.join("assets", "sounds", "waterSplash.mp3")
+            splash_sound = pygame.mixer.Sound(splash_sound_path)
+            splash_sound.set_volume(0.25)  # Volumen reducido al 25% para evitar saturación
+            splash_sound.play()
+            print("🔊 Reproduciendo sonido de salpicadura de agua")
+        except pygame.error as e:
+            print(f"❌ Error al reproducir sonido de salpicadura: {e}")
+        except FileNotFoundError:
+            print("❌ No se encontró el archivo waterSplash.mp3")

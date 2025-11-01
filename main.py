@@ -75,7 +75,8 @@ class BattleshipClient:
     def __init__(self):
         pygame.init()
         
-        # Inicializar mixer de pygame para audio
+        # Inicializar mixer de pygame para audio con configuración optimizada
+        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=1024)
         pygame.mixer.init()
         
         # Definir tamaño mínimo de ventana para que los barcos se vean correctamente
@@ -124,7 +125,7 @@ class BattleshipClient:
             # Cargar y reproducir la música de fondo en bucle
             music_path = os.path.join("assets", "sounds", "piratas.mp3")
             pygame.mixer.music.load(music_path)
-            pygame.mixer.music.set_volume(0.5)  # Volumen al 50%
+            pygame.mixer.music.set_volume(0.3)  # Volumen reducido al 30% para evitar saturación
             pygame.mixer.music.play(-1)  # -1 significa bucle infinito
             print("✅ Música de fondo 'piratas.mp3' iniciada")
         except pygame.error as e:
@@ -231,6 +232,12 @@ class BattleshipClient:
                         self.current_state = "menu"
                         self.game_over_screen = None
             
+            # Verificar estado de conexión periódicamente si no estamos en el menú
+            if self.current_state != "menu" and hasattr(self.network_manager, 'connected'):
+                if not self.network_manager.connected and self.current_state in ["game", "game_over"]:
+                    print("🔌 Detección de desconexión en bucle principal")
+                    self.on_server_disconnect()
+            
             # Renderizar según el estado actual
             if self.current_state == "menu":
                 self.menu_screen.update()
@@ -260,6 +267,7 @@ class BattleshipClient:
         self.network_manager.set_game_update_callback(self.on_game_update)
         self.network_manager.set_shot_result_callback(self.on_shot_result)
         self.network_manager.set_game_over_callback(self.on_game_over)
+        self.network_manager.set_server_disconnect_callback(self.on_server_disconnect)
     
     def on_players_ready(self, data):
         """Callback cuando cambia el estado de jugadores conectados"""
@@ -281,7 +289,7 @@ class BattleshipClient:
         try:
             game_music_path = os.path.join("assets", "sounds", "background.mp3")
             pygame.mixer.music.load(game_music_path)
-            pygame.mixer.music.set_volume(0.09)  # Volumen un poco más bajo para el juego
+            pygame.mixer.music.set_volume(0.2)  # Volumen reducido al 20% para evitar saturación
             pygame.mixer.music.play(-1)  # -1 significa bucle infinito
             print("🎵 Música de fondo del juego 'background.mp3' iniciada")
         except pygame.error as e:
@@ -327,6 +335,37 @@ class BattleshipClient:
         
         # Cambiar al estado de game over
         self.current_state = "game_over"
+    
+    def on_server_disconnect(self):
+        """Callback cuando se desconecta el servidor o un jugador"""
+        if self.current_state in ["game", "game_over"]:
+            print("🔌 Oponente desconectado - Redirigiendo al menú principal")
+        else:
+            print("🔌 Servidor desconectado - Redirigiendo al menú principal")
+        
+        # Detener cualquier música que esté reproduciéndose
+        pygame.mixer.music.stop()
+        print("🔇 Música detenida por desconexión")
+        
+        # Marcar como desconectado en el manager
+        self.network_manager.connected = False
+        self.network_manager.player_id = None
+        
+        # Resetear estado del menú para mostrar desconectado
+        self.menu_screen.set_connection_status(False, False)
+        
+        # Reiniciar música de fondo del menú
+        self.init_background_music()
+        
+        # Restaurar el estado de silencio si estaba activado
+        if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
+            pygame.mixer.music.set_volume(0.0)
+        
+        # Volver al menú principal
+        self.current_state = "menu"
+        self.game_over_screen = None
+        
+        print("✅ Redirigido al menú principal")
 
 if __name__ == "__main__":
     client = BattleshipClient()
