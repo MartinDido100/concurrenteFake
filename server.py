@@ -111,7 +111,12 @@ class Player:
         return len(self.hits_received) == total_ship_positions
 
 class BattleshipServer:
-    def __init__(self, host='localhost', port=8888):
+    def __init__(self, host='0.0.0.0', port=8888):
+        """
+        Inicializar servidor de Batalla Naval
+        host='0.0.0.0' permite conexiones desde cualquier IP (LAN y Online)
+        host='localhost' solo permite conexiones locales
+        """
         self.host = host
         self.port = port
         self.players: Dict[str, Player] = {}

@@ -4,6 +4,7 @@ import os
 from menu import MenuScreen
 from game import GameScreen
 from network import NetworkManager
+from connection_dialog import ConnectionDialog
 
 class GameOverScreen:
     def __init__(self, screen, is_winner=False):
@@ -195,11 +196,27 @@ class BattleshipClient:
                 if self.current_state == "menu":
                     action = self.menu_screen.handle_event(event)
                     if action == "connect":
-                        # Intentar conectar al servidor - mantenerse en menú
-                        if self.network_manager.connect_to_server():
-                            print("Conectado al servidor exitosamente")
+                        # Mostrar diálogo de configuración de conexión
+                        connection_dialog = ConnectionDialog(self.screen)
+                        connection_config = connection_dialog.run()
+                        
+                        if connection_config:
+                            # Intentar conectar con la configuración seleccionada
+                            host = connection_config['host']
+                            port = connection_config['port']
+                            mode = connection_config['mode']
+                            
+                            print(f"🔌 Intentando conectar en modo {mode.upper()}...")
+                            print(f"   Host: {host}")
+                            print(f"   Puerto: {port}")
+                            
+                            if self.network_manager.connect_to_server(host, port):
+                                print(f"✅ Conectado exitosamente a {host}:{port} (modo {mode})")
+                            else:
+                                print(f"❌ Error: No se pudo conectar a {host}:{port}")
                         else:
-                            print("Error: No se pudo conectar al servidor")
+                            print("❌ Conexión cancelada por el usuario")
+                            
                     elif action == "start_game":
                         # Solicitar inicio del juego al servidor
                         if self.network_manager.start_game():
