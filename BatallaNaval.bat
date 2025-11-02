@@ -47,8 +47,11 @@ python -m pip install --upgrade pip
 echo Instalando Pygame...
 python -m pip install pygame
 
+echo Instalando requests...
+python -m pip install requests
+
 echo ==========================================================
 echo Ejecutando juego...
-python main.py
+py main.py
 
 endlocal

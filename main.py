@@ -201,17 +201,16 @@ class BattleshipClient:
                         connection_config = connection_dialog.run()
                         
                         if connection_config:
-                            # Intentar conectar con la configuración seleccionada
+                            # Intentar conectar con la configuración ingresada
                             host = connection_config['host']
                             port = connection_config['port']
-                            mode = connection_config['mode']
                             
-                            print(f"🔌 Intentando conectar en modo {mode.upper()}...")
+                            print(f"🔌 Intentando conectar a servidor ngrok...")
                             print(f"   Host: {host}")
                             print(f"   Puerto: {port}")
                             
                             if self.network_manager.connect_to_server(host, port):
-                                print(f"✅ Conectado exitosamente a {host}:{port} (modo {mode})")
+                                print(f"✅ Conectado exitosamente a {host}:{port}")
                             else:
                                 print(f"❌ Error: No se pudo conectar a {host}:{port}")
                         else:

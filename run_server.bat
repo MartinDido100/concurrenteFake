@@ -1,19 +1,26 @@
 @echo off
-title Batalla Naval - Servidor LAN
+:: Script para iniciar el servidor en modo online con ngrok
+title Batalla Naval - Servidor Online (ngrok)
+
 echo.
 echo ========================================================================
-echo                BATALLA NAVAL - SERVIDOR LAN (Red Local)
+echo                BATALLA NAVAL - SERVIDOR ONLINE (ngrok)
 echo ========================================================================
 echo.
-echo Este servidor permite conexiones en la red local (LAN)
-echo Los jugadores deben estar en la misma red WiFi/Ethernet
+echo Este script iniciara el servidor con soporte para ngrok
+echo Los jugadores podran conectarse desde cualquier parte del mundo
 echo.
-echo Para jugar por Internet, usa: run_server_online.bat
+echo IMPORTANTE:
+echo - Necesitas tener ngrok instalado
+echo - Se te proporcionara una URL publica para compartir con los jugadores
+echo - Mantén esta ventana abierta mientras juegas
 echo.
 echo ========================================================================
 echo.
-echo Iniciando servidor de Batalla Naval...
-echo Presiona Ctrl+C para detener el servidor
-echo.
-python server.py
+
+pause
+
+:: Ejecutar el script de Python para servidor online
+python start_server_online.py
+
 pause
