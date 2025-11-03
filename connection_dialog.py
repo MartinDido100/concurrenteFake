@@ -1,8 +1,3 @@
-"""
-Diálogo de configuración de conexión para el juego Batalla Naval
-Permite introducir la dirección del servidor
-"""
-
 import pygame
 import sys
 import os
@@ -12,37 +7,22 @@ class ConnectionDialog:
         self.screen = screen
         self.width = screen.get_width()
         self.height = screen.get_height()
-        
-        # Inicializar el módulo de portapapeles para Ctrl+V
         try:
             pygame.scrap.init()
-            print("✅ Módulo de portapapeles inicializado correctamente")
-        except Exception as e:
-            print(f"❌ Error al inicializar portapapeles: {e}")
-        
-        # Estado del diálogo
+        except Exception:
+            pass
         self.active = True
-        self.result = None  # {'host': str, 'port': int}
-        
-        # Campos de texto - Valores por defecto para localhost
-        self.host_input = '127.0.0.1'  # localhost por defecto
-        self.port_input = '8889'       # puerto por defecto
-        self.active_input = 'host'  # 'host' o 'port'
-        
-        # Imagen de fondo del menú
+        self.result = None
+        self.host_input = '127.0.0.1'
+        self.port_input = '8889'
+        self.active_input = 'host'
         self.menu_image = None
         self.load_menu_background()
-        
-        # Fuentes
         self.font_title = pygame.font.Font(None, 48)
         self.font_normal = pygame.font.Font(None, 32)
         self.font_small = pygame.font.Font(None, 24)
-        
-        # Configurar elementos de UI
         self.setup_ui()
-    
     def load_menu_background(self):
-        """Cargar la imagen de fondo del menú"""
         try:
             self.menu_image = pygame.image.load('assets/images/menu.png')
             self.menu_image = pygame.transform.scale(self.menu_image, (self.width, self.height))
@@ -50,14 +30,12 @@ class ConnectionDialog:
             self.menu_image = None
     
     def draw_menu_background(self):
-        """Dibujar el mismo fondo que el menú principal"""
         if self.menu_image:
             self.screen.blit(self.menu_image, (0, 0))
         else:
             self.screen.fill((30, 30, 60))
         
     def setup_ui(self):
-        """Configurar elementos de la interfaz"""
         center_x = self.width // 2
         center_y = self.height // 2
         
@@ -116,16 +94,12 @@ class ConnectionDialog:
             
             # Click en botón conectar
             elif self.connect_button['rect'].collidepoint(mouse_pos):
-                # Validar que los campos no estén vacíos
                 if not self.host_input.strip():
-                    print("⚠️ Debes ingresar el Host/IP")
                     return
                 
                 if not self.port_input.strip() or not self.port_input.isdigit():
-                    print("⚠️ Debes ingresar un puerto válido")
                     return
                 
-                # Todo válido, crear resultado
                 self.result = {
                     'host': self.host_input.strip(),
                     'port': int(self.port_input)
@@ -147,17 +121,14 @@ class ConnectionDialog:
                         # Decodificar el texto del portapapeles
                         pasted_text = clipboard_text.decode('utf-8').strip()
                         
-                        # Solo pegar en el campo host si está activo
                         if self.active_input == 'host' and pasted_text:
-                            # Limpiar caracteres especiales y limitar longitud
                             pasted_text = ''.join(c for c in pasted_text if c.isprintable() and c not in '\n\r\t')
                             if len(pasted_text) <= 50:
                                 self.host_input = pasted_text
                             else:
-                                # Si es muy largo, tomar solo los primeros 50 caracteres
                                 self.host_input = pasted_text[:50]
-                except Exception as e:
-                    print(f"❌ Error al pegar del portapapeles: {e}")
+                except Exception:
+                    pass
             
             elif self.active_input == 'host':
                 if event.key == pygame.K_BACKSPACE:
@@ -165,11 +136,10 @@ class ConnectionDialog:
                 elif event.key == pygame.K_TAB:
                     self.active_input = 'port'
                 elif event.key == pygame.K_RETURN:
-                    # Validar antes de conectar
                     if not self.host_input.strip():
-                        print("⚠️ Debes ingresar el Host/IP")
+                        pass
                     elif not self.port_input.strip() or not self.port_input.isdigit():
-                        print("⚠️ Debes ingresar un puerto válido")
+                        pass
                     else:
                         self.result = {
                             'host': self.host_input.strip(),
@@ -185,11 +155,10 @@ class ConnectionDialog:
                 elif event.key == pygame.K_TAB:
                     self.active_input = 'host'
                 elif event.key == pygame.K_RETURN:
-                    # Validar antes de conectar
                     if not self.host_input.strip():
-                        print("⚠️ Debes ingresar el Host/IP")
+                        pass
                     elif not self.port_input.strip() or not self.port_input.isdigit():
-                        print("⚠️ Debes ingresar un puerto válido")
+                        pass
                     else:
                         self.result = {
                             'host': self.host_input.strip(),
@@ -200,7 +169,6 @@ class ConnectionDialog:
                     self.port_input += event.unicode
     
     def draw(self):
-        """Dibujar el diálogo"""
         # Fondo igual que el del menú principal
         self.draw_menu_background()
         

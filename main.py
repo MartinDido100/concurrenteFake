@@ -75,36 +75,20 @@ class GameOverScreen:
 class BattleshipClient:
     def __init__(self):
         pygame.init()
-        
-        # Inicializar mixer de pygame para audio con configuración optimizada
         pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=1024)
         pygame.mixer.init()
-        
-        # Definir tamaño mínimo de ventana para que los barcos se vean correctamente
         self.min_width = 1200
         self.min_height = 800
-        
-        # Definir tamaño inicial de ventana (no pantalla completa)
         initial_width = self.min_width
         initial_height = self.min_height
-        
-        # Establecer el título antes de crear la ventana
         pygame.display.set_caption("Batalla Naval - Cliente")
-        
-        # Crear ventana redimensionable con todos los controles (minimizar, restaurar/maximizar, cerrar)
         self.screen = pygame.display.set_mode((initial_width, initial_height), pygame.RESIZABLE)
-        
-        # Forzar la actualización de la ventana para asegurar que la barra de título aparezca
         pygame.display.flip()
         self.width = self.screen.get_width()
         self.height = self.screen.get_height()
         self.clock = pygame.time.Clock()
-        
-        # Estados del juego
         self.current_state = "menu"
         self.running = True
-        
-        # Inicializar network manager primero
         self.network_manager = NetworkManager()
         
 
@@ -123,16 +107,12 @@ class BattleshipClient:
     def init_background_music(self):
         """Inicializar y reproducir música de fondo"""
         try:
-            # Cargar y reproducir la música de fondo en bucle
             music_path = os.path.join("assets", "sounds", "piratas.mp3")
             pygame.mixer.music.load(music_path)
-            pygame.mixer.music.set_volume(0.3)  # Volumen reducido al 30% para evitar saturación
-            pygame.mixer.music.play(-1)  # -1 significa bucle infinito
-            print("✅ Música de fondo 'piratas.mp3' iniciada")
-        except pygame.error as e:
-            print(f"❌ Error al cargar música de fondo: {e}")
-        except FileNotFoundError:
-            print("❌ No se encontró el archivo piratas.mp3")
+            pygame.mixer.music.set_volume(0.3)
+            pygame.mixer.music.play(-1)
+        except (pygame.error, FileNotFoundError):
+            pass
 
     def run(self):
         while self.running:
@@ -201,25 +181,19 @@ class BattleshipClient:
                         connection_config = connection_dialog.run()
                         
                         if connection_config:
-                            # Intentar conectar con la configuración ingresada
                             host = connection_config['host']
                             port = connection_config['port']
                             
-                            print(f"🔌 Intentando conectar a servidor ngrok...")
-                            print(f"   Host: {host}")
-                            print(f"   Puerto: {port}")
-                            
                             if self.network_manager.connect_to_server(host, port):
-                                print(f"✅ Conectado exitosamente a {host}:{port}")
+                                pass
                             else:
-                                print(f"❌ Error: No se pudo conectar a {host}:{port}")
+                                pass
                         else:
-                            print("❌ Conexión cancelada por el usuario")
+                            pass
                             
                     elif action == "start_game":
-                        # Solicitar inicio del juego al servidor
                         if self.network_manager.start_game():
-                            print("Solicitando inicio de partida...")
+                            pass
                     elif action == "toggle_music":
                         # Alternar música
                         self.menu_screen.toggle_music_mute()
@@ -229,32 +203,25 @@ class BattleshipClient:
                 elif self.current_state == "game_over":
                     action = self.game_over_screen.handle_event(event)
                     if action == "accept":
-                        # Desconectar del servidor al terminar el juego
                         if self.network_manager.connected:
                             self.network_manager.disconnect()
-                            print("Desconectado del servidor después del juego")
                         
-                        # Resetear estado del menú para mostrar desconectado
+                        # Reiniciar completamente el game_screen para limpiar datos de partida anterior
+                        self.game_screen = None
+                        
                         self.menu_screen.set_connection_status(False, False)
-                        
-                        # Reiniciar música de fondo del menú
                         self.init_background_music()
                         
-                        # Restaurar el estado de silencio si estaba activado
                         if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
                             pygame.mixer.music.set_volume(0.0)
                         
-                        # Volver al menú
                         self.current_state = "menu"
                         self.game_over_screen = None
             
-            # Verificar estado de conexión periódicamente si no estamos en el menú
             if self.current_state != "menu" and hasattr(self.network_manager, 'connected'):
                 if not self.network_manager.connected and self.current_state in ["game", "game_over"]:
-                    print("🔌 Detección de desconexión en bucle principal")
                     self.on_server_disconnect()
             
-            # Renderizar según el estado actual
             if self.current_state == "menu":
                 self.menu_screen.update()
                 self.menu_screen.draw()
@@ -262,7 +229,6 @@ class BattleshipClient:
                 self.game_screen.update()
                 self.game_screen.draw()
             elif self.current_state == "game_over":
-                # Dibujar el juego de fondo y encima la pantalla de game over
                 self.game_screen.update()
                 self.game_screen.draw()
                 self.game_over_screen.draw()
@@ -270,7 +236,9 @@ class BattleshipClient:
             pygame.display.flip()
             self.clock.tick(60)
         
-        # Detener música antes de cerrar
+        # Limpieza al cerrar
+        if self.network_manager and self.network_manager.connected:
+            self.network_manager.disconnect()
         pygame.mixer.music.stop()
         pygame.mixer.quit()
         pygame.quit()
@@ -282,58 +250,61 @@ class BattleshipClient:
         self.network_manager.set_game_start_callback(self.on_game_start)
         self.network_manager.set_game_update_callback(self.on_game_update)
         self.network_manager.set_shot_result_callback(self.on_shot_result)
+        self.network_manager.set_ship_sunk_callback(self.on_ship_sunk)  # Nuevo callback
+        self.network_manager.set_enemy_ship_sunk_callback(self.on_enemy_ship_sunk)  # Nuevo callback
         self.network_manager.set_game_over_callback(self.on_game_over)
         self.network_manager.set_server_disconnect_callback(self.on_server_disconnect)
     
     def on_players_ready(self, data):
-        """Callback cuando cambia el estado de jugadores conectados"""
         connected = data.get('connected_players', 0) > 0
         players_ready = data.get('players_ready', False)
         self.menu_screen.set_connection_status(connected, players_ready)
     
     def on_game_start(self, data):
-        """Callback cuando inicia el juego"""
-        print(f"🎮 MENSAJE GAME_START RECIBIDO: {data}")
-        print("✅ El servidor confirmó el inicio del juego")
-        print("🚀 Redirigiendo AMBOS clientes a la pantalla de juego...")
-        
-        # Detener completamente la música del menú
         pygame.mixer.music.stop()
-        print("🔇 Música del menú detenida")
         
-        # Cargar y reproducir música de fondo del juego
         try:
             game_music_path = os.path.join("assets", "sounds", "background.mp3")
             pygame.mixer.music.load(game_music_path)
-            pygame.mixer.music.set_volume(0.2)  # Volumen reducido al 20% para evitar saturación
-            pygame.mixer.music.play(-1)  # -1 significa bucle infinito
-            print("🎵 Música de fondo del juego 'background.mp3' iniciada")
-        except pygame.error as e:
-            print(f"❌ Error al cargar música de juego: {e}")
-        except FileNotFoundError:
-            print("❌ No se encontró el archivo background.mp3")
+            pygame.mixer.music.set_volume(0.2)
+            pygame.mixer.music.play(-1)
+        except (pygame.error, FileNotFoundError):
+            pass
         
-        # Cambiar automáticamente a la pantalla de juego (pantalla en blanco inicialmente)
+        # Crear una nueva instancia de GameScreen para cada partida
+        self.game_screen = GameScreen(self.screen, self.network_manager)
+        
         self.current_state = "game"
-        print("✅ Estado cambiado a 'game' - Pantalla de juego activa")
     
     def on_game_update(self, data):
-        """Callback para actualizaciones del juego"""
-        # Actualizar estado del juego según los datos del servidor
         phase = data.get('phase')
         current_turn = data.get('current_turn')
         
         if phase == 'battle_phase':
             self.game_screen.start_battle_phase()
-            # Verificar si es mi turno
             is_my_turn = current_turn == self.network_manager.player_id
             self.game_screen.set_my_turn(is_my_turn)
     
     def on_shot_result(self, data):
-        """Callback para resultados de disparos"""
-        # Actualizar tableros con resultado del disparo
         if hasattr(self.game_screen, 'handle_shot_result'):
             self.game_screen.handle_shot_result(data)
+    
+    def on_ship_sunk(self, data):
+        ship_name = data.get('ship_name', 'Barco desconocido')
+        message = data.get('message', f'¡Hundiste un {ship_name}!')
+        
+        if self.current_state == "game" and self.game_screen:
+            self.game_screen.add_temporary_message(f"🚢💥 ¡BARCO HUNDIDO! 💥🚢", 8.0, (255, 0, 0))
+            self.game_screen.add_temporary_message(f"🏆 {message} 🏆", 6.0, (255, 215, 0))
+    
+    def on_enemy_ship_sunk(self, data):
+        ship_name = data.get('ship_name', 'Barco enemigo')
+        message = data.get('message', f'¡Hundiste el {ship_name}!')
+        
+        if self.current_state == "game" and self.game_screen:
+            self.game_screen.add_temporary_message(f"🎯 {message} 🎯", 8.0, (255, 215, 0))
+            self.game_screen.add_temporary_message(f"🏆 ¡VICTORIA! ¡BARCO DESTRUIDO! 🏆", 6.0, (0, 255, 0))
+            print(f"❌ No se pudo mostrar mensaje de victoria")
     
     def on_game_over(self, data):
         """Callback cuando termina el juego"""
@@ -343,41 +314,26 @@ class BattleshipClient:
         pygame.mixer.music.stop()
         print("🔇 Música de juego detenida")
         
-        # Obtener si el jugador ganó o perdió
         is_winner = data.get('is_winner', False)
-        
-        # Crear pantalla de game over
         self.game_over_screen = GameOverScreen(self.screen, is_winner)
-        
-        # Cambiar al estado de game over
         self.current_state = "game_over"
     
     def on_server_disconnect(self):
-        """Callback cuando se desconecta el servidor o un jugador"""
-        if self.current_state in ["game", "game_over"]:
-            print("🔌 Oponente desconectado - Redirigiendo al menú principal")
-        else:
-            print("🔌 Servidor desconectado - Redirigiendo al menú principal")
-        
-        # Detener cualquier música que esté reproduciéndose
         pygame.mixer.music.stop()
-        print("🔇 Música detenida por desconexión")
         
-        # Marcar como desconectado en el manager
         self.network_manager.connected = False
         self.network_manager.player_id = None
         
-        # Resetear estado del menú para mostrar desconectado
+        # Reiniciar completamente el game_screen para limpiar datos de partida anterior
+        self.game_screen = None
+        
         self.menu_screen.set_connection_status(False, False)
         
-        # Reiniciar música de fondo del menú
         self.init_background_music()
         
-        # Restaurar el estado de silencio si estaba activado
         if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
             pygame.mixer.music.set_volume(0.0)
         
-        # Volver al menú principal
         self.current_state = "menu"
         self.game_over_screen = None
         

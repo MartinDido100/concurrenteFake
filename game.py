@@ -1,5 +1,6 @@
 import pygame
 import os
+import time
 
 class Ship:
     def __init__(self, size):
@@ -8,22 +9,10 @@ class Ship:
         self.hits = set()
         self.sunk = False
         self.horizontal = True
-        
-        # Asignar nombre según el tamaño
-        if size == 5:
-            self.name = "Portaaviones"
-        elif size == 4:
-            self.name = "Destructor Acorazado"
-        elif size == 3:
-            self.name = "Barco de Ataque"
-        elif size == 2:
-            self.name = "Lancha Rapida"
-        else:
-            self.name = f"Barco de {size} casillas"
-    
+        ship_names = {5: "Portaaviones", 4: "Destructor Acorazado", 3: "Barco de Ataque", 2: "Lancha Rapida"}
+        self.name = ship_names.get(size, f"Barco de {size} casillas")
     def is_sunk(self):
         return len(self.hits) >= self.size
-    
     def hit(self, x, y):
         if (x, y) in self.positions:
             self.hits.add((x, y))
@@ -40,12 +29,10 @@ class GameBoard:
         self.width = board_size
         self.height = board_size
         self.cell_size = board_size // self.grid_size
-        
         self.grid = [['empty' for _ in range(self.grid_size)] for _ in range(self.grid_size)]
         self.ships = []
         self.shots = {}
-        self.sunk_ships_positions = {}  # Diccionario: posición -> nombre del barco hundido
-        
+        self.sunk_ships_positions = {}
         self.colors = {
             'water': (70, 130, 180),
             'ship': (101, 67, 33),
@@ -61,71 +48,49 @@ class GameBoard:
             for col in range(self.grid_size):
                 cell_x = self.x + col * self.cell_size
                 cell_y = self.y + row * self.cell_size
-                
                 if (row + col) % 2 == 0:
                     color = self.colors['water']
                 else:
                     color = self.colors['water_dark']
-                
                 pygame.draw.rect(screen, color,
                                (cell_x, cell_y, self.cell_size, self.cell_size))
-        
         for i in range(self.grid_size + 1):
             line_width = 2 if i % 5 == 0 else 1
-            
             pygame.draw.line(screen, self.colors['grid'], 
                            (self.x + i * self.cell_size, self.y),
                            (self.x + i * self.cell_size, self.y + self.height), line_width)
             pygame.draw.line(screen, self.colors['grid'],
                            (self.x, self.y + i * self.cell_size),
                            (self.x + self.width, self.y + i * self.cell_size), line_width)
-
         if show_ships:
             for ship in self.ships:
                 self.draw_realistic_ship(screen, ship)
-        
         for (shot_x, shot_y), result in self.shots.items():
             cell_x = self.x + shot_x * self.cell_size
             cell_y = self.y + shot_y * self.cell_size
             center_x = cell_x + self.cell_size // 2
             center_y = cell_y + self.cell_size // 2
-            
             if result == 'hit' or result == 'sunk':
-                # Misil rojo para aciertos (hit o sunk)
                 self.draw_missile(screen, center_x, center_y, (220, 20, 60), 'hit')
-                
-                # Si el barco está hundido, mostrar el nombre
                 if result == 'sunk':
-                    # Verificar si tenemos el nombre del barco para esta posición
                     if (shot_x, shot_y) in self.sunk_ships_positions:
                         sunk_ship_name = self.sunk_ships_positions[(shot_x, shot_y)]
                         self.draw_sunk_ship_label(screen, center_x, center_y, sunk_ship_name)
             elif result == 'miss':
-                # Misil blanco para fallos
                 self.draw_missile(screen, center_x, center_y, (255, 255, 255), 'miss')
-        
-        # Dibujar coordenadas del tablero
         self.draw_coordinates(screen)
     
     def draw_missile(self, screen, center_x, center_y, color, shot_type):
-        """Dibujar un misil realista en la posición del disparo"""
         if shot_type == 'hit':
-            # Misil de impacto - más grande y con efectos de explosión
             missile_size = self.cell_size // 3
-            
-            # Cuerpo principal del misil (elipse vertical)
             missile_body = pygame.Rect(center_x - 8, center_y - 12, 16, 24)
             pygame.draw.ellipse(screen, color, missile_body)
-            
-            # Punta del misil
             points = [
-                (center_x, center_y - 15),  # Punta superior
-                (center_x - 6, center_y - 8),  # Izquierda
-                (center_x + 6, center_y - 8)   # Derecha
+                (center_x, center_y - 15),
+                (center_x - 6, center_y - 8),
+                (center_x + 6, center_y - 8)
             ]
             pygame.draw.polygon(screen, (180, 15, 45), points)
-            
-            # Aletas del misil
             pygame.draw.polygon(screen, (150, 10, 30), [
                 (center_x - 8, center_y + 8),
                 (center_x - 12, center_y + 15),
@@ -182,7 +147,7 @@ class GameBoard:
     
     def draw_sunk_ship_label(self, screen, center_x, center_y, ship_name):
         """Dibujar etiqueta del barco hundido"""
-        label_font = pygame.font.Font(None, 24)  # Fuente más grande
+        label_font = pygame.font.Font(None, 24)
         
         # Crear texto
         text_surface = label_font.render(f"HUNDIDO: {ship_name}", True, (255, 255, 0))
@@ -576,8 +541,6 @@ class GameScreen:
         print("✅ Sistema de barcos realistas inicializado")
     
     def add_temporary_message(self, text, duration=3.0, color=(255, 255, 0)):
-        """Agregar un mensaje temporal que se muestra en pantalla"""
-        import time
         self.temporary_messages.append({
             "text": text,
             "time": time.time() + duration,
@@ -585,28 +548,37 @@ class GameScreen:
         })
     
     def update_temporary_messages(self):
-        """Actualizar y limpiar mensajes temporales expirados"""
-        import time
         current_time = time.time()
         self.temporary_messages = [msg for msg in self.temporary_messages if msg["time"] > current_time]
     
     def draw_temporary_messages(self):
-        """Dibujar mensajes temporales en la pantalla"""
-        message_font = pygame.font.Font(None, 48)
-        y_offset = 200
+        if not self.temporary_messages:
+            return
+            
+        message_font = pygame.font.Font(None, 56)
+        y_offset = 150
         
         for i, msg in enumerate(self.temporary_messages):
             text_surface = message_font.render(msg["text"], True, msg["color"])
-            text_rect = text_surface.get_rect(center=(self.width // 2, y_offset + i * 60))
+            text_rect = text_surface.get_rect(center=(self.width // 2, y_offset + i * 70))
             
-            # Fondo semi-transparente
-            bg_rect = pygame.Rect(text_rect.x - 10, text_rect.y - 5, text_rect.width + 20, text_rect.height + 10)
+            bg_rect = pygame.Rect(text_rect.x - 20, text_rect.y - 10, text_rect.width + 40, text_rect.height + 20)
             bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
-            bg_surface.set_alpha(180)
+            bg_surface.set_alpha(240)
             bg_surface.fill((0, 0, 0))
             
             self.screen.blit(bg_surface, bg_rect)
-            pygame.draw.rect(self.screen, msg["color"], bg_rect, 3)
+            pygame.draw.rect(self.screen, msg["color"], bg_rect, 5)
+            self.screen.blit(text_surface, text_rect)
+            
+            # Fondo MÁS VISIBLE
+            bg_rect = pygame.Rect(text_rect.x - 20, text_rect.y - 10, text_rect.width + 40, text_rect.height + 20)
+            bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+            bg_surface.set_alpha(240)  # Casi opaco
+            bg_surface.fill((0, 0, 0))
+            
+            self.screen.blit(bg_surface, bg_rect)
+            pygame.draw.rect(self.screen, msg["color"], bg_rect, 5)  # Borde grueso
             self.screen.blit(text_surface, text_rect)
     
     def handle_event(self, event):
@@ -686,7 +658,6 @@ class GameScreen:
         
         self.draw_info_panel()
         
-        # Fuentes más grandes para mejor legibilidad
         main_info_font = pygame.font.Font(None, 32)
         secondary_info_font = pygame.font.Font(None, 28)
         
@@ -945,7 +916,9 @@ class GameScreen:
         shooter = data.get('shooter')
         sunk_ship_name = data.get('sunk_ship_name')  # Nombre del barco hundido (si aplica)
         
-        print(f"Disparo en ({x}, {y}) por jugador {shooter}: {result}")
+        print(f"🎯 RESULTADO DISPARO: ({x}, {y}) por jugador {shooter}: {result}")
+        if sunk_ship_name:
+            print(f"🚢 BARCO HUNDIDO: {sunk_ship_name}")
 
         if result == 'hit' or result == 'sunk':
             self.play_missile_sound()
@@ -953,46 +926,65 @@ class GameScreen:
             self.play_water_splash_sound()
         
         if shooter == self.network_manager.player_id:
-            # Mi disparo - registrar en el tablero enemigo
+            # MI DISPARO - registrar en el tablero enemigo
             self.enemy_board.shots[(x, y)] = result
+            print(f"📍 Registrando mi disparo en tablero enemigo: ({x}, {y}) = {result}")
             
-            # Si hundí un barco enemigo, marcarlo inmediatamente para visualización
-            if result == 'sunk' and sunk_ship_name:
-                # Marcar esta posición específica como hundida
-                self.enemy_board.mark_sunk_ship_at_position(x, y, sunk_ship_name)
+            # MENSAJE ESPECIAL PARA ACIERTOS
+            if result == 'hit':
+                self.add_temporary_message("¡IMPACTO DIRECTO!", 2.0, (255, 165, 0))
+                print("💥 ¡IMPACTO DIRECTO EN BARCO ENEMIGO!")
+            
+            # NOTIFICACIÓN ESPECIAL PARA BARCOS HUNDIDOS
+            if result == 'sunk':
+                print(f"🎉 ¡YO HUNDÍ UN BARCO ENEMIGO!")
                 
-                if sunk_ship_name not in self.enemy_sunk_ships:
-                    self.enemy_sunk_ships.append(sunk_ship_name)
-                    print(f"¡Hundiste el {sunk_ship_name} enemigo!")
+                # MENSAJE INMEDIATO GRANDE Y VISIBLE
+                self.add_temporary_message("🚢💥 ¡BARCO HUNDIDO! 💥🚢", 5.0, (255, 0, 0))
+                print("✅ MENSAJE BARCO HUNDIDO AGREGADO")
+                
+                if sunk_ship_name:
+                    # Marcar esta posición específica como hundida
+                    self.enemy_board.mark_sunk_ship_at_position(x, y, sunk_ship_name)
                     
-                    # Mostrar mensaje temporal grande en pantalla
-                    self.add_temporary_message(f"¡HUNDISTE: {sunk_ship_name}!", 4.0, (255, 255, 0))
-                    
-                    # Encontrar todas las posiciones del barco hundido para el registro completo
-                    ship_positions = self.find_ship_positions_around(x, y)
-                    if ship_positions:
-                        self.enemy_board.add_sunk_ship_info(ship_positions, sunk_ship_name)
+                    if sunk_ship_name not in self.enemy_sunk_ships:
+                        self.enemy_sunk_ships.append(sunk_ship_name)
+                        print(f"🏆 ¡CONFIRMADO! Hundiste el {sunk_ship_name} enemigo!")
+                        
+                        # Mostrar mensaje temporal GRANDE en pantalla
+                        self.add_temporary_message(f"� ¡HUNDISTE: {sunk_ship_name}! �", 6.0, (255, 255, 0))
+                        print(f"🏆 MENSAJE CON NOMBRE AGREGADO: {sunk_ship_name}")
+                        
+                        # Encontrar todas las posiciones del barco hundido
+                        ship_positions = self.find_ship_positions_around(x, y)
+                        if ship_positions:
+                            self.enemy_board.add_sunk_ship_info(ship_positions, sunk_ship_name)
             
             # Solo pierdo el turno si es miss
             if result == 'miss':
                 self.my_turn = False
+                self.add_temporary_message("Agua... Turno del oponente", 2.0, (100, 150, 255))
             # Si es hit o sunk, mantengo el turno para seguir disparando
             
         else:
-            # El disparo fue del oponente hacia mi tablero
-            # Registrar el disparo del enemigo en mi tablero propio
+            # EL DISPARO FUE DEL OPONENTE hacia mi tablero
             self.my_board.shots[(x, y)] = result
+            print(f"📍 Registrando disparo enemigo en mi tablero: ({x}, {y}) = {result}")
             
             # Si fue hit, también marcar el barco como golpeado
             if result == 'hit' or result == 'sunk':
                 for ship in self.my_board.ships:
                     if (x, y) in ship.positions:
                         ship.hit(x, y)
-                        if ship.sunk:
-                            print(f"¡El enemigo hundió tu {ship.name}!")
-                            # Mostrar mensaje temporal cuando el enemigo hunde nuestro barco
-                            self.add_temporary_message(f"¡PERDISTE: {ship.name}!", 4.0, (255, 100, 100))
+                        if result == 'hit':
+                            self.add_temporary_message(f"¡Tu {ship.name} fue golpeado!", 3.0, (255, 140, 0))
+                            print(f"💥 Mi {ship.name} fue golpeado por el enemigo")
+                        elif ship.sunk:
+                            print(f"💀 ¡El enemigo hundió mi {ship.name}!")
+                            self.add_temporary_message(f"💀 ¡PERDISTE: {ship.name}! 💀", 4.0, (255, 100, 100))
                         break
+            elif result == 'miss':
+                self.add_temporary_message("El enemigo falló", 2.0, (100, 255, 100))
     
     def set_my_turn(self, is_my_turn):
         self.my_turn = is_my_turn
@@ -1002,27 +994,19 @@ class GameScreen:
         self.game_phase = "battle"
     
     def play_missile_sound(self):
-        """Reproducir sonido de impacto de misil"""
         try:
             missile_sound_path = os.path.join("assets", "sounds", "misil.mp3")
             missile_sound = pygame.mixer.Sound(missile_sound_path)
-            missile_sound.set_volume(0.3)  # Volumen reducido al 30% para evitar saturación
+            missile_sound.set_volume(0.3)
             missile_sound.play()
-            print("🔊 Reproduciendo sonido de impacto de misil")
-        except pygame.error as e:
-            print(f"❌ Error al reproducir sonido de misil: {e}")
-        except FileNotFoundError:
-            print("❌ No se encontró el archivo misil.mp3")
+        except (pygame.error, FileNotFoundError):
+            pass
     
     def play_water_splash_sound(self):
-        """Reproducir sonido de salpicadura de agua cuando se falla"""
         try:
             splash_sound_path = os.path.join("assets", "sounds", "waterSplash.mp3")
             splash_sound = pygame.mixer.Sound(splash_sound_path)
-            splash_sound.set_volume(0.25)  # Volumen reducido al 25% para evitar saturación
+            splash_sound.set_volume(0.25)
             splash_sound.play()
-            print("🔊 Reproduciendo sonido de salpicadura de agua")
-        except pygame.error as e:
-            print(f"❌ Error al reproducir sonido de salpicadura: {e}")
-        except FileNotFoundError:
-            print("❌ No se encontró el archivo waterSplash.mp3")
+        except (pygame.error, FileNotFoundError):
+            pass
