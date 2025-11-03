@@ -45,10 +45,8 @@ class Player:
                 'data': data
             }
             message_json = json.dumps(message) + '\n'
-            logger.info(f"📤 Enviando mensaje {message_type.value} a {self.player_id}: {data}")
             self.writer.write(message_json.encode('utf-8'))
             await self.writer.drain()
-            logger.info(f"✅ Mensaje enviado exitosamente a {self.player_id}")
             return True
         except ConnectionResetError:
             logger.error(f"🔌 Cliente {self.player_id} desconectado durante envío")
@@ -67,10 +65,10 @@ class Player:
                 self.grid[y][x] = 1
         self.ships.append(positions)
     
-    def receive_shot(self, x: int, y: int) -> tuple:
-        """Procesar disparo recibido. Retorna (resultado, nombre_barco_si_hundido)"""
+    def receive_shot(self, x: int, y: int) -> str:
+        """Procesar disparo recibido. Retorna 'hit', 'miss', o 'sunk'"""
         if not (0 <= x < 10 and 0 <= y < 10):
-            return ('miss', None)
+            return 'miss'
         
         if self.grid[y][x] == 1:  # Barco
             self.grid[y][x] = 2  # Marcar como golpeado
@@ -78,19 +76,19 @@ class Player:
             
             # Verificar si el barco fue hundido
             for ship_positions in self.ships:
+                logger.info(f"Barco: {ship_positions}")
                 if (x, y) in ship_positions:
+                    logger.info(f"Coordenada {x, y} encontrada en barco {ship_positions}")
                     # Verificar si todas las posiciones del barco fueron golpeadas
-                    if all((sx, sy) in self.hits_received for sx, sy in ship_positions):
-                        # Determinar el nombre del barco según su tamaño
-                        ship_size = len(ship_positions)
-                        ship_name = self.get_ship_name_by_size(ship_size)
-                        return ('sunk', ship_name)
+                    if all((sy, sx) in self.hits_received for sx, sy in ship_positions):
+                        return 'sunk'
                     break
-            return ('hit', None)
+                    logger.info(f"Coordenada {x, y} todav   ía faltan posiciones por golpear")
+            return 'hit'
         else:
             if self.grid[y][x] == 0:  # Agua
                 self.grid[y][x] = 3  # Marcar agua como golpeada
-            return ('miss', None)
+            return 'miss'
     
     def get_ship_name_by_size(self, size: int) -> str:
         """Obtener el nombre del barco según su tamaño"""
@@ -360,13 +358,12 @@ class BattleshipServer:
             return
         
         opponent = self.players[opponent_id]
-        result, sunk_ship_name = opponent.receive_shot(x, y)
+        result = opponent.receive_shot(x, y)
         
         # Enviar resultado del disparo
         shot_data = {
             'x': x, 'y': y, 'result': result,
-            'shooter': shooter_id, 'target': opponent_id,
-            'sunk_ship_name': sunk_ship_name
+            'shooter': shooter_id, 'target': opponent_id
         }
         
         for player in self.players.values():

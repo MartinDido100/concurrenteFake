@@ -858,7 +858,8 @@ class GameScreen:
         shooter = data.get('shooter')
         sunk_ship_name = data.get('sunk_ship_name')  # Nombre del barco hundido (si aplica)
         
-        # Reproducir sonido según el resultado
+        print(f"Disparo en ({x}, {y}) por jugador {shooter}: {result}")
+
         if result == 'hit' or result == 'sunk':
             self.play_missile_sound()
         elif result == 'miss':

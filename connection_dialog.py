@@ -13,6 +13,13 @@ class ConnectionDialog:
         self.width = screen.get_width()
         self.height = screen.get_height()
         
+        # Inicializar el módulo de portapapeles para Ctrl+V
+        try:
+            pygame.scrap.init()
+            print("✅ Módulo de portapapeles inicializado correctamente")
+        except Exception as e:
+            print(f"❌ Error al inicializar portapapeles: {e}")
+        
         # Estado del diálogo
         self.active = True
         self.result = None  # {'host': str, 'port': int}
@@ -131,7 +138,28 @@ class ConnectionDialog:
                 self.active = False
         
         elif event.type == pygame.KEYDOWN:
-            if self.active_input == 'host':
+            # Detectar Ctrl+V para pegar contenido del portapapeles
+            if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
+                try:
+                    # Obtener contenido del portapapeles
+                    clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+                    if clipboard_text:
+                        # Decodificar el texto del portapapeles
+                        pasted_text = clipboard_text.decode('utf-8').strip()
+                        
+                        # Solo pegar en el campo host si está activo
+                        if self.active_input == 'host' and pasted_text:
+                            # Limpiar caracteres especiales y limitar longitud
+                            pasted_text = ''.join(c for c in pasted_text if c.isprintable() and c not in '\n\r\t')
+                            if len(pasted_text) <= 50:
+                                self.host_input = pasted_text
+                            else:
+                                # Si es muy largo, tomar solo los primeros 50 caracteres
+                                self.host_input = pasted_text[:50]
+                except Exception as e:
+                    print(f"❌ Error al pegar del portapapeles: {e}")
+            
+            elif self.active_input == 'host':
                 if event.key == pygame.K_BACKSPACE:
                     self.host_input = self.host_input[:-1]
                 elif event.key == pygame.K_TAB:
