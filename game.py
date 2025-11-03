@@ -44,6 +44,7 @@ class GameBoard:
         self.grid = [['empty' for _ in range(self.grid_size)] for _ in range(self.grid_size)]
         self.ships = []
         self.shots = {}
+        self.sunk_ships_positions = {}  # Diccionario: posición -> nombre del barco hundido
         
         self.colors = {
             'water': (70, 130, 180),
@@ -95,8 +96,9 @@ class GameBoard:
                 
                 # Si el barco está hundido, mostrar el nombre
                 if result == 'sunk':
-                    sunk_ship_name = self.get_sunk_ship_name(shot_x, shot_y)
-                    if sunk_ship_name:
+                    # Verificar si tenemos el nombre del barco para esta posición
+                    if (shot_x, shot_y) in self.sunk_ships_positions:
+                        sunk_ship_name = self.sunk_ships_positions[(shot_x, shot_y)]
                         self.draw_sunk_ship_label(screen, center_x, center_y, sunk_ship_name)
             elif result == 'miss':
                 # Misil blanco para fallos
@@ -180,24 +182,24 @@ class GameBoard:
     
     def draw_sunk_ship_label(self, screen, center_x, center_y, ship_name):
         """Dibujar etiqueta del barco hundido"""
-        label_font = pygame.font.Font(None, 20)
+        label_font = pygame.font.Font(None, 24)  # Fuente más grande
         
         # Crear texto
-        text_surface = label_font.render(ship_name, True, (255, 255, 0))
+        text_surface = label_font.render(f"HUNDIDO: {ship_name}", True, (255, 255, 0))
         text_rect = text_surface.get_rect()
         
         # Posicionar el texto arriba del misil
         label_x = center_x - text_rect.width // 2
-        label_y = center_y - 35
+        label_y = center_y - 45  # Más espacio arriba
         
         # Fondo semi-transparente para el texto
-        bg_rect = pygame.Rect(label_x - 3, label_y - 2, text_rect.width + 6, text_rect.height + 4)
+        bg_rect = pygame.Rect(label_x - 5, label_y - 3, text_rect.width + 10, text_rect.height + 6)
         bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
-        bg_surface.set_alpha(180)
+        bg_surface.set_alpha(200)  # Más opaco
         bg_surface.fill((0, 0, 0))
         
         screen.blit(bg_surface, (bg_rect.x, bg_rect.y))
-        pygame.draw.rect(screen, (255, 255, 0), bg_rect, 1)
+        pygame.draw.rect(screen, (255, 255, 0), bg_rect, 2)  # Borde más grueso
         screen.blit(text_surface, (label_x, label_y))
     
     def draw_coordinates(self, screen):
@@ -491,10 +493,35 @@ class GameBoard:
     
     def get_sunk_ship_name(self, x, y):
         """Obtener el nombre del barco hundido en la posición dada"""
+        # Para el tablero enemigo, usar la información de barcos hundidos conocidos
+        if hasattr(self, 'sunk_ships_info'):
+            for ship_info in self.sunk_ships_info:
+                if (x, y) in ship_info.get('positions', []):
+                    return ship_info.get('name')
+        
+        # Para el tablero propio, buscar en los barcos locales
         for ship in self.ships:
             if (x, y) in ship.positions and ship.sunk:
                 return ship.name
         return None
+    
+    def add_sunk_ship_info(self, positions, name):
+        """Agregar información de un barco enemigo hundido"""
+        if not hasattr(self, 'sunk_ships_info'):
+            self.sunk_ships_info = []
+        
+        self.sunk_ships_info.append({
+            'positions': positions,
+            'name': name
+        })
+        
+        # También agregar a sunk_ships_positions para visualización inmediata
+        for pos in positions:
+            self.sunk_ships_positions[pos] = name
+    
+    def mark_sunk_ship_at_position(self, x, y, ship_name):
+        """Marcar una posición específica como barco hundido con su nombre"""
+        self.sunk_ships_positions[(x, y)] = ship_name
 
 class GameScreen:
     def __init__(self, screen, network_manager=None):
@@ -502,6 +529,9 @@ class GameScreen:
         self.width = screen.get_width()
         self.height = screen.get_height()
         self.network_manager = network_manager
+        
+        # Sistema de mensajes temporales
+        self.temporary_messages = []  # Lista de {"text": str, "time": float, "color": tuple}
         
         # Calcular tamaño para los tableros
         title_space = 80   # Espacio para título principal arriba
@@ -545,6 +575,40 @@ class GameScreen:
         
         print("✅ Sistema de barcos realistas inicializado")
     
+    def add_temporary_message(self, text, duration=3.0, color=(255, 255, 0)):
+        """Agregar un mensaje temporal que se muestra en pantalla"""
+        import time
+        self.temporary_messages.append({
+            "text": text,
+            "time": time.time() + duration,
+            "color": color
+        })
+    
+    def update_temporary_messages(self):
+        """Actualizar y limpiar mensajes temporales expirados"""
+        import time
+        current_time = time.time()
+        self.temporary_messages = [msg for msg in self.temporary_messages if msg["time"] > current_time]
+    
+    def draw_temporary_messages(self):
+        """Dibujar mensajes temporales en la pantalla"""
+        message_font = pygame.font.Font(None, 48)
+        y_offset = 200
+        
+        for i, msg in enumerate(self.temporary_messages):
+            text_surface = message_font.render(msg["text"], True, msg["color"])
+            text_rect = text_surface.get_rect(center=(self.width // 2, y_offset + i * 60))
+            
+            # Fondo semi-transparente
+            bg_rect = pygame.Rect(text_rect.x - 10, text_rect.y - 5, text_rect.width + 20, text_rect.height + 10)
+            bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+            bg_surface.set_alpha(180)
+            bg_surface.fill((0, 0, 0))
+            
+            self.screen.blit(bg_surface, bg_rect)
+            pygame.draw.rect(self.screen, msg["color"], bg_rect, 3)
+            self.screen.blit(text_surface, text_rect)
+    
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -580,7 +644,7 @@ class GameScreen:
         self.ship_horizontal = not self.ship_horizontal
     
     def update(self):
-        pass
+        self.update_temporary_messages()
     
     def draw(self):
         self.draw_ocean_background()
@@ -657,6 +721,8 @@ class GameScreen:
                 ships_rect = ships_surface.get_rect(center=(self.width // 2, self.height - 45))
                 self.screen.blit(ships_surface, ships_rect)
         
+        # Dibujar mensajes temporales al final (sobre todo lo demás)
+        self.draw_temporary_messages()
 
     
     def draw_ocean_background(self):
@@ -852,6 +918,27 @@ class GameScreen:
             self.network_manager.place_ships(ships_data)
             print("Barcos enviados al servidor")
     
+    def find_ship_positions_around(self, center_x, center_y):
+        """Encontrar todas las posiciones de un barco alrededor de una coordenada central"""
+        visited = set()
+        ship_positions = []
+        
+        def get_ship_positions_recursive(x, y):
+            if (x, y) in visited or not (0 <= x < 10 and 0 <= y < 10):
+                return
+            
+            # Solo incluir posiciones que sean 'hit' o 'sunk'
+            if (x, y) in self.enemy_board.shots and self.enemy_board.shots[(x, y)] in ['hit', 'sunk']:
+                visited.add((x, y))
+                ship_positions.append((x, y))
+                
+                # Buscar en direcciones adyacentes (solo horizontal/vertical)
+                for dx, dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
+                    get_ship_positions_recursive(x + dx, y + dy)
+        
+        get_ship_positions_recursive(center_x, center_y)
+        return ship_positions
+    
     def handle_shot_result(self, data):
         x, y = data.get('x'), data.get('y')
         result = data.get('result')
@@ -869,11 +956,22 @@ class GameScreen:
             # Mi disparo - registrar en el tablero enemigo
             self.enemy_board.shots[(x, y)] = result
             
-            # Si hundí un barco enemigo, agregarlo a la lista
+            # Si hundí un barco enemigo, marcarlo inmediatamente para visualización
             if result == 'sunk' and sunk_ship_name:
+                # Marcar esta posición específica como hundida
+                self.enemy_board.mark_sunk_ship_at_position(x, y, sunk_ship_name)
+                
                 if sunk_ship_name not in self.enemy_sunk_ships:
                     self.enemy_sunk_ships.append(sunk_ship_name)
                     print(f"¡Hundiste el {sunk_ship_name} enemigo!")
+                    
+                    # Mostrar mensaje temporal grande en pantalla
+                    self.add_temporary_message(f"¡HUNDISTE: {sunk_ship_name}!", 4.0, (255, 255, 0))
+                    
+                    # Encontrar todas las posiciones del barco hundido para el registro completo
+                    ship_positions = self.find_ship_positions_around(x, y)
+                    if ship_positions:
+                        self.enemy_board.add_sunk_ship_info(ship_positions, sunk_ship_name)
             
             # Solo pierdo el turno si es miss
             if result == 'miss':
@@ -892,6 +990,8 @@ class GameScreen:
                         ship.hit(x, y)
                         if ship.sunk:
                             print(f"¡El enemigo hundió tu {ship.name}!")
+                            # Mostrar mensaje temporal cuando el enemigo hunde nuestro barco
+                            self.add_temporary_message(f"¡PERDISTE: {ship.name}!", 4.0, (255, 100, 100))
                         break
     
     def set_my_turn(self, is_my_turn):

@@ -7,7 +7,7 @@ class NetworkManager:
         self.socket = None
         self.connected = False
         self.server_host = "localhost"
-        self.server_port = 8888  # Puerto original
+        self.server_port = 8889  # Puerto original
         self.player_id = None
         
         # Callbacks para eventos del servidor

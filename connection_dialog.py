@@ -24,9 +24,9 @@ class ConnectionDialog:
         self.active = True
         self.result = None  # {'host': str, 'port': int}
         
-        # Campos de texto - Vacíos por defecto
-        self.host_input = ''
-        self.port_input = ''
+        # Campos de texto - Valores por defecto para localhost
+        self.host_input = '127.0.0.1'  # localhost por defecto
+        self.port_input = '8889'       # puerto por defecto
         self.active_input = 'host'  # 'host' o 'port'
         
         # Imagen de fondo del menú
@@ -216,7 +216,7 @@ class ConnectionDialog:
         self.screen.blit(title, title_rect)
         
         # Subtítulo
-        subtitle = self.font_small.render("Ingresa la dirección del servidor ngrok:", True, (200, 200, 200))
+        subtitle = self.font_small.render("Ingresa la dirección del servidor (localhost por defecto):", True, (200, 200, 200))
         subtitle_rect = subtitle.get_rect(center=(self.width//2, 170))
         self.screen.blit(subtitle, subtitle_rect)
         
@@ -248,10 +248,10 @@ class ConnectionDialog:
             # Si está vacío, mostrar placeholder
             if not text_value:
                 if field['name'] == 'host':
-                    placeholder = "Ejemplo: 0.tcp.ngrok.io"
+                    placeholder = "127.0.0.1 (localhost)"
                     placeholder_color = (120, 120, 120)
                 else:  # port
-                    placeholder = "Ejemplo: 12345"
+                    placeholder = "8889"
                     placeholder_color = (120, 120, 120)
                 
                 text = self.font_normal.render(placeholder, True, placeholder_color)
