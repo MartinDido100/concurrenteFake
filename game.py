@@ -873,17 +873,18 @@ class GameScreen:
             
             # Si hundí un barco enemigo, procesarlo completamente
             if result == 'sunk' and sunk_ship_name and ship_info:
-                if sunk_ship_name not in self.enemy_sunk_ships:
-                    self.enemy_sunk_ships.append(sunk_ship_name)
-                    print(f"🎯 ¡HUNDISTE EL {sunk_ship_name.upper()} ENEMIGO!")
-                    
-                    # Almacenar información completa del barco para mostrar nombres en el tablero
-                    ship_positions = ship_info.get('positions', [])
-                    for pos in ship_positions:
-                        self.enemy_sunk_ships_info[tuple(pos)] = sunk_ship_name
-                    
-                    # Marcar todas las posiciones del barco como hundidas
-                    self.enemy_board.mark_enemy_ship_sunk(ship_info, [(x, y)])
+                # Allow storing multiple sunk ships even if they have the same name
+                # (e.g. two "Barco de Ataque"). We intentionally don't deduplicate by name.
+                self.enemy_sunk_ships.append(sunk_ship_name)
+                print(f"🎯 ¡HUNDISTE EL {sunk_ship_name.upper()} ENEMIGO!")
+
+                # Almacenar información completa del barco para mostrar nombres en el tablero
+                ship_positions = ship_info.get('positions', [])
+                for pos in ship_positions:
+                    self.enemy_sunk_ships_info[tuple(pos)] = sunk_ship_name
+
+                # Marcar todas las posiciones del barco como hundidas (usar posiciones reales)
+                self.enemy_board.mark_enemy_ship_sunk(ship_info, ship_positions)
             
             # Solo pierdo el turno si es miss
             if result == 'miss':
@@ -943,3 +944,28 @@ class GameScreen:
             print(f"❌ Error al reproducir sonido de salpicadura: {e}")
         except FileNotFoundError:
             print("❌ No se encontró el archivo waterSplash.mp3")
+
+    def reset_game_state(self):
+        """Resetear el estado de la pantalla de juego para una nueva partida.
+
+        Esto limpia tableros, barcos, disparos y la información de barcos hundidos
+        para evitar que queden residuos de la partida anterior en la UI.
+        """
+        # Reiniciar tableros completamente
+        self.my_board = GameBoard(self.my_board.x, self.my_board.y, self.my_board.width)
+        self.enemy_board = GameBoard(self.enemy_board.x, self.enemy_board.y, self.enemy_board.width)
+
+        # Resetear estado de fase y colocación
+        self.game_phase = "placement"
+        self.selected_ship_size = 2
+        self.ship_horizontal = True
+        self.my_turn = False
+        self.ships_to_place = [5, 4, 3, 3, 2]
+        self.current_ship_index = 0
+
+        # Limpiar seguimiento de barcos enemigos hundidos
+        self.enemy_sunk_ships = []
+        self.enemy_sunk_ships_info = {}
+
+        # Fuentes se preservan
+        print("🔄 Estado del juego reseteado para nueva partida")

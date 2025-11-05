@@ -313,6 +313,13 @@ class BattleshipClient:
         except FileNotFoundError:
             print("❌ No se encontró el archivo background.mp3")
         
+        # Resetear la pantalla de juego para asegurarnos de que no quede nada de partidas previas
+        if hasattr(self, 'game_screen') and self.game_screen is not None:
+            try:
+                self.game_screen.reset_game_state()
+            except Exception as e:
+                print(f"⚠️ Error reseteando pantalla de juego: {e}")
+
         # Cambiar automáticamente a la pantalla de juego (pantalla en blanco inicialmente)
         self.current_state = "game"
         print("✅ Estado cambiado a 'game' - Pantalla de juego activa")
@@ -346,6 +353,13 @@ class BattleshipClient:
         # Obtener si el jugador ganó o perdió
         is_winner = data.get('is_winner', False)
         
+        # Resetear la pantalla de juego para limpiar lo que quedó en pantalla
+        if hasattr(self, 'game_screen') and self.game_screen is not None:
+            try:
+                self.game_screen.reset_game_state()
+            except Exception as e:
+                print(f"⚠️ Error reseteando pantalla tras game over: {e}")
+
         # Crear pantalla de game over
         self.game_over_screen = GameOverScreen(self.screen, is_winner)
         
