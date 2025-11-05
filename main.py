@@ -5,6 +5,7 @@ from menu import MenuScreen
 from game import GameScreen
 from network import NetworkManager
 from connection_dialog import ConnectionDialog
+from constants import *
 
 class GameOverScreen:
     def __init__(self, screen, is_winner=False):
@@ -14,18 +15,18 @@ class GameOverScreen:
         self.is_winner = is_winner
         
         # Configurar botón
-        button_width = 200
-        button_height = 60
+        button_width = GAME_OVER_BUTTON_WIDTH
+        button_height = GAME_OVER_BUTTON_HEIGHT
         self.accept_button = {
             'rect': pygame.Rect(self.width // 2 - button_width // 2, self.height // 2 + 100, button_width, button_height),
             'text': 'ACEPTAR',
-            'color': (70, 130, 180),
-            'hover_color': (100, 149, 237),
-            'text_color': (255, 255, 255)
+            'color': COLOR_BUTTON_CONNECT,
+            'hover_color': COLOR_BUTTON_CONNECT_HOVER,
+            'text_color': COLOR_WHITE
         }
         
-        self.font_large = pygame.font.Font(None, 96)
-        self.font_medium = pygame.font.Font(None, 48)
+        self.font_large = pygame.font.Font(None, FONT_SIZE_LARGE)
+        self.font_medium = pygame.font.Font(None, FONT_SIZE_DIALOG_TITLE)
     
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -38,25 +39,21 @@ class GameOverScreen:
     def draw(self):
         # Fondo semi-transparente
         overlay = pygame.Surface((self.width, self.height))
-        overlay.set_alpha(180)
-        overlay.fill((0, 0, 0))
+        overlay.set_alpha(GAME_OVER_ALPHA)
+        overlay.fill(COLOR_BLACK)
         self.screen.blit(overlay, (0, 0))
         
-        # Texto principal
-        if self.is_winner:
-            main_text = "GANASTE"
-            text_color = (0, 255, 0)  # Verde
-        else:
-            main_text = "PERDISTE"
-            text_color = (255, 0, 0)  # Rojo
+        # Determinar texto y color
+        main_text = "GANASTE" if self.is_winner else "PERDISTE"
+        text_color = COLOR_GREEN if self.is_winner else COLOR_RED
         
-        # Dibujar texto principal
+        # Dibujar texto principal con sombra
+        shadow_surface = self.font_large.render(main_text, True, COLOR_BLACK)
         text_surface = self.font_large.render(main_text, True, text_color)
-        text_rect = text_surface.get_rect(center=(self.width // 2, self.height // 2 - 50))
         
-        # Sombra del texto
-        shadow_surface = self.font_large.render(main_text, True, (0, 0, 0))
+        text_rect = text_surface.get_rect(center=(self.width // 2, self.height // 2 - 50))
         shadow_rect = shadow_surface.get_rect(center=(self.width // 2 + 3, self.height // 2 - 47))
+        
         self.screen.blit(shadow_surface, shadow_rect)
         self.screen.blit(text_surface, text_rect)
         
@@ -65,7 +62,7 @@ class GameOverScreen:
         button_color = self.accept_button['hover_color'] if self.accept_button['rect'].collidepoint(mouse_pos) else self.accept_button['color']
         
         pygame.draw.rect(self.screen, button_color, self.accept_button['rect'])
-        pygame.draw.rect(self.screen, (255, 255, 255), self.accept_button['rect'], 3)
+        pygame.draw.rect(self.screen, COLOR_WHITE, self.accept_button['rect'], 3)
         
         # Texto del botón
         button_text = self.font_medium.render(self.accept_button['text'], True, self.accept_button['text_color'])
@@ -77,16 +74,16 @@ class BattleshipClient:
         pygame.init()
         
         # Inicializar mixer de pygame para audio con configuración optimizada
-        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=1024)
+        pygame.mixer.pre_init(frequency=MIXER_FREQUENCY, size=MIXER_SIZE, channels=MIXER_CHANNELS, buffer=MIXER_BUFFER)
         pygame.mixer.init()
         
         # Definir tamaño mínimo de ventana para que los barcos se vean correctamente
-        self.min_width = 1200
-        self.min_height = 800
+        self.min_width = MIN_WINDOW_WIDTH
+        self.min_height = MIN_WINDOW_HEIGHT
         
         # Definir tamaño inicial de ventana (no pantalla completa)
-        initial_width = self.min_width
-        initial_height = self.min_height
+        initial_width = INITIAL_WINDOW_WIDTH
+        initial_height = INITIAL_WINDOW_HEIGHT
         
         # Establecer el título antes de crear la ventana
         pygame.display.set_caption("Batalla Naval - Cliente")
@@ -107,8 +104,6 @@ class BattleshipClient:
         # Inicializar network manager primero
         self.network_manager = NetworkManager()
         
-
-        
         # Inicializar pantallas
         self.menu_screen = MenuScreen(self.screen)
         self.game_screen = GameScreen(self.screen, self.network_manager)
@@ -126,7 +121,7 @@ class BattleshipClient:
             # Cargar y reproducir la música de fondo en bucle
             music_path = os.path.join("assets", "sounds", "piratas.mp3")
             pygame.mixer.music.load(music_path)
-            pygame.mixer.music.set_volume(0.3)  # Volumen reducido al 30% para evitar saturación
+            pygame.mixer.music.set_volume(MUSIC_VOLUME_MENU)  # Volumen reducido para evitar saturación
             pygame.mixer.music.play(-1)  # -1 significa bucle infinito
             print("✅ Música de fondo 'piratas.mp3' iniciada")
         except pygame.error as e:
@@ -242,7 +237,7 @@ class BattleshipClient:
                         
                         # Restaurar el estado de silencio si estaba activado
                         if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
-                            pygame.mixer.music.set_volume(0.0)
+                            pygame.mixer.music.set_volume(MUTED_VOLUME)
                         
                         # Volver al menú
                         self.current_state = "menu"
@@ -268,7 +263,7 @@ class BattleshipClient:
                 self.game_over_screen.draw()
             
             pygame.display.flip()
-            self.clock.tick(60)
+            self.clock.tick(TARGET_FPS)
         
         # Detener música antes de cerrar
         pygame.mixer.music.stop()
@@ -305,7 +300,7 @@ class BattleshipClient:
         try:
             game_music_path = os.path.join("assets", "sounds", "background.mp3")
             pygame.mixer.music.load(game_music_path)
-            pygame.mixer.music.set_volume(0.2)  # Volumen reducido al 20% para evitar saturación
+            pygame.mixer.music.set_volume(MUSIC_VOLUME_GAME)  # Volumen reducido para evitar saturación
             pygame.mixer.music.play(-1)  # -1 significa bucle infinito
             print("🎵 Música de fondo del juego 'background.mp3' iniciada")
         except pygame.error as e:
@@ -389,7 +384,7 @@ class BattleshipClient:
         
         # Restaurar el estado de silencio si estaba activado
         if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
-            pygame.mixer.music.set_volume(0.0)
+            pygame.mixer.music.set_volume(MUTED_VOLUME)
         
         # Volver al menú principal
         self.current_state = "menu"

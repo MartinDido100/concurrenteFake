@@ -5,7 +5,7 @@ Permite introducir la dirección del servidor
 
 import pygame
 import sys
-import os
+from constants import *
 
 class ConnectionDialog:
     def __init__(self, screen):
@@ -34,9 +34,9 @@ class ConnectionDialog:
         self.load_menu_background()
         
         # Fuentes
-        self.font_title = pygame.font.Font(None, 48)
-        self.font_normal = pygame.font.Font(None, 32)
-        self.font_small = pygame.font.Font(None, 24)
+        self.font_title = pygame.font.Font(None, FONT_SIZE_DIALOG_TITLE)
+        self.font_normal = pygame.font.Font(None, FONT_SIZE_NORMAL)
+        self.font_small = pygame.font.Font(None, FONT_SIZE_SMALL)
         
         # Configurar elementos de UI
         self.setup_ui()
@@ -62,16 +62,16 @@ class ConnectionDialog:
         center_y = self.height // 2
         
         # Campos de entrada
-        input_width = 450
-        input_height = 55
+        input_width = CONNECTION_INPUT_WIDTH
+        input_height = CONNECTION_INPUT_HEIGHT
         
         self.host_field = {
             'rect': pygame.Rect(center_x - input_width//2, center_y - 80, input_width, input_height),
             'label': 'Host / IP:',
             'name': 'host',
             'color': (200, 200, 200),
-            'active_color': (255, 255, 255),
-            'text_color': (0, 0, 0)
+            'active_color': COLOR_WHITE,
+            'text_color': COLOR_BLACK
         }
         
         self.port_field = {
@@ -79,26 +79,26 @@ class ConnectionDialog:
             'label': 'Puerto:',
             'name': 'port',
             'color': (200, 200, 200),
-            'active_color': (255, 255, 255),
-            'text_color': (0, 0, 0)
+            'active_color': COLOR_WHITE,
+            'text_color': COLOR_BLACK
         }
         
         # Botones de acción
-        action_button_width = 200
-        action_button_height = 55
+        action_button_width = CONNECTION_BUTTON_WIDTH
+        action_button_height = CONNECTION_BUTTON_HEIGHT
         
         self.connect_button = {
             'rect': pygame.Rect(center_x - action_button_width - 10, center_y + 100, action_button_width, action_button_height),
             'text': 'Conectar',
-            'color': (34, 139, 34),
-            'hover_color': (50, 205, 50)
+            'color': COLOR_BUTTON_CONNECT,
+            'hover_color': COLOR_BUTTON_CONNECT_HOVER
         }
         
         self.cancel_button = {
             'rect': pygame.Rect(center_x + 10, center_y + 100, action_button_width, action_button_height),
             'text': 'Cancelar',
-            'color': (180, 70, 70),
-            'hover_color': (220, 100, 100)
+            'color': COLOR_BUTTON_CANCEL,
+            'hover_color': COLOR_BUTTON_CANCEL_HOVER
         }
     
     def handle_event(self, event):
@@ -106,98 +106,82 @@ class ConnectionDialog:
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_pos = event.pos
             
-            # Click en campo de host
             if self.host_field['rect'].collidepoint(mouse_pos):
                 self.active_input = 'host'
-            
-            # Click en campo de puerto
             elif self.port_field['rect'].collidepoint(mouse_pos):
                 self.active_input = 'port'
-            
-            # Click en botón conectar
             elif self.connect_button['rect'].collidepoint(mouse_pos):
-                # Validar que los campos no estén vacíos
-                if not self.host_input.strip():
-                    print("⚠️ Debes ingresar el Host/IP")
-                    return
-                
-                if not self.port_input.strip() or not self.port_input.isdigit():
-                    print("⚠️ Debes ingresar un puerto válido")
-                    return
-                
-                # Todo válido, crear resultado
-                self.result = {
-                    'host': self.host_input.strip(),
-                    'port': int(self.port_input)
-                }
-                self.active = False
-            
-            # Click en botón cancelar
+                self._handle_connect()
             elif self.cancel_button['rect'].collidepoint(mouse_pos):
                 self.result = None
                 self.active = False
         
         elif event.type == pygame.KEYDOWN:
-            # Detectar Ctrl+V para pegar contenido del portapapeles
-            if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
-                try:
-                    # Obtener contenido del portapapeles
-                    clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
-                    if clipboard_text:
-                        # Decodificar el texto del portapapeles
-                        pasted_text = clipboard_text.decode('utf-8').strip()
-                        
-                        # Solo pegar en el campo host si está activo
-                        if self.active_input == 'host' and pasted_text:
-                            # Limpiar caracteres especiales y limitar longitud
-                            pasted_text = ''.join(c for c in pasted_text if c.isprintable() and c not in '\n\r\t')
-                            if len(pasted_text) <= 50:
-                                self.host_input = pasted_text
-                            else:
-                                # Si es muy largo, tomar solo los primeros 50 caracteres
-                                self.host_input = pasted_text[:50]
-                except Exception as e:
-                    print(f"❌ Error al pegar del portapapeles: {e}")
-            
-            elif self.active_input == 'host':
-                if event.key == pygame.K_BACKSPACE:
-                    self.host_input = self.host_input[:-1]
-                elif event.key == pygame.K_TAB:
-                    self.active_input = 'port'
-                elif event.key == pygame.K_RETURN:
-                    # Validar antes de conectar
-                    if not self.host_input.strip():
-                        print("⚠️ Debes ingresar el Host/IP")
-                    elif not self.port_input.strip() or not self.port_input.isdigit():
-                        print("⚠️ Debes ingresar un puerto válido")
-                    else:
-                        self.result = {
-                            'host': self.host_input.strip(),
-                            'port': int(self.port_input)
-                        }
-                        self.active = False
-                elif event.unicode and len(self.host_input) < 50:
-                    self.host_input += event.unicode
-            
-            elif self.active_input == 'port':
-                if event.key == pygame.K_BACKSPACE:
-                    self.port_input = self.port_input[:-1]
-                elif event.key == pygame.K_TAB:
-                    self.active_input = 'host'
-                elif event.key == pygame.K_RETURN:
-                    # Validar antes de conectar
-                    if not self.host_input.strip():
-                        print("⚠️ Debes ingresar el Host/IP")
-                    elif not self.port_input.strip() or not self.port_input.isdigit():
-                        print("⚠️ Debes ingresar un puerto válido")
-                    else:
-                        self.result = {
-                            'host': self.host_input.strip(),
-                            'port': int(self.port_input)
-                        }
-                        self.active = False
-                elif event.unicode.isdigit() and len(self.port_input) < 5:
-                    self.port_input += event.unicode
+            self._handle_keydown(event)
+    
+    def _handle_connect(self):
+        """Manejar botón de conectar"""
+        if not self.host_input.strip():
+            print("⚠️ Debes ingresar el Host/IP")
+            return
+        
+        if not self.port_input.strip() or not self.port_input.isdigit():
+            print("⚠️ Debes ingresar un puerto válido")
+            return
+        
+        self.result = {
+            'host': self.host_input.strip(),
+            'port': int(self.port_input)
+        }
+        self.active = False
+    
+    def _handle_keydown(self, event):
+        """Manejar eventos de teclado"""
+        if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
+            self._handle_paste()
+        elif self.active_input == 'host':
+            self._handle_host_input(event)
+        elif self.active_input == 'port':
+            self._handle_port_input(event)
+    
+    def _handle_paste(self):
+        """Manejar Ctrl+V para pegar"""
+        if self.active_input != 'host':
+            return
+        
+        try:
+            clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+            if clipboard_text:
+                pasted_text = clipboard_text.decode('utf-8').strip()
+                pasted_text = ''.join(c for c in pasted_text if c.isprintable() and c not in '\n\r\t')
+                if len(pasted_text) <= MAX_HOST_LENGTH:
+                    self.host_input = pasted_text
+                else:
+                    self.host_input = pasted_text[:MAX_HOST_LENGTH]
+        except Exception as e:
+            print(f"❌ Error al pegar del portapapeles: {e}")
+    
+    def _handle_host_input(self, event):
+        """Manejar entrada de texto en el campo host"""
+        if event.key == pygame.K_BACKSPACE:
+            self.host_input = self.host_input[:-1]
+        elif event.key == pygame.K_TAB:
+            self.active_input = 'port'
+        elif event.key == pygame.K_RETURN:
+            self._handle_connect()
+        elif event.unicode and len(self.host_input) < MAX_HOST_LENGTH:
+            self.host_input += event.unicode
+    
+    def _handle_port_input(self, event):
+        """Manejar entrada de texto en el campo puerto"""
+        if event.key == pygame.K_BACKSPACE:
+            self.port_input = self.port_input[:-1]
+        elif event.key == pygame.K_TAB:
+            self.active_input = 'host'
+        elif event.key == pygame.K_RETURN:
+            self._handle_connect()
+        elif event.unicode.isdigit() and len(self.port_input) < MAX_PORT_LENGTH:
+            self.port_input += event.unicode
     
     def draw(self):
         """Dibujar el diálogo"""
@@ -206,12 +190,12 @@ class ConnectionDialog:
         
         # Overlay semi-transparente para oscurecer un poco
         overlay = pygame.Surface((self.width, self.height))
-        overlay.set_alpha(120)
+        overlay.set_alpha(OVERLAY_ALPHA)
         overlay.fill((0, 0, 20))
         self.screen.blit(overlay, (0, 0))
         
         # Título
-        title = self.font_title.render("Conectar al Servidor", True, (255, 255, 255))
+        title = self.font_title.render("Conectar al Servidor", True, COLOR_WHITE)
         title_rect = title.get_rect(center=(self.width//2, 120))
         self.screen.blit(title, title_rect)
         
@@ -268,8 +252,8 @@ class ConnectionDialog:
                     cursor_x = text_rect.right + 2
                     cursor_y1 = field['rect'].centery - 15
                     cursor_y2 = field['rect'].centery + 15
-                    if int(pygame.time.get_ticks() / 500) % 2:
-                        pygame.draw.line(self.screen, (0, 0, 0), (cursor_x, cursor_y1), (cursor_x, cursor_y2), 2)
+                    if int(pygame.time.get_ticks() / CURSOR_BLINK_INTERVAL) % 2:
+                        pygame.draw.line(self.screen, COLOR_BLACK, (cursor_x, cursor_y1), (cursor_x, cursor_y2), 2)
         
         # Dibujar botones de acción
         for button in [self.connect_button, self.cancel_button]:
@@ -281,10 +265,10 @@ class ConnectionDialog:
             
             # Dibujar
             pygame.draw.rect(self.screen, color, button['rect'], border_radius=5)
-            pygame.draw.rect(self.screen, (255, 255, 255), button['rect'], 2, border_radius=5)
+            pygame.draw.rect(self.screen, COLOR_WHITE, button['rect'], 2, border_radius=5)
             
             # Texto
-            text = self.font_normal.render(button['text'], True, (255, 255, 255))
+            text = self.font_normal.render(button['text'], True, COLOR_WHITE)
             text_rect = text.get_rect(center=button['rect'].center)
             self.screen.blit(text, text_rect)
     
@@ -302,6 +286,6 @@ class ConnectionDialog:
             
             self.draw()
             pygame.display.flip()
-            clock.tick(60)
+            clock.tick(TARGET_FPS)
         
         return self.result

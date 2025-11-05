@@ -1,5 +1,6 @@
 import pygame
 import os
+from constants import *
 
 class Ship:
     def __init__(self, size):
@@ -10,16 +11,7 @@ class Ship:
         self.horizontal = True
         
         # Asignar nombre según el tamaño
-        if size == 5:
-            self.name = "Portaaviones"
-        elif size == 4:
-            self.name = "Destructor Acorazado"
-        elif size == 3:
-            self.name = "Barco de Ataque"
-        elif size == 2:
-            self.name = "Lancha Rapida"
-        else:
-            self.name = f"Barco de {size} casillas"
+        self.name = SHIP_NAMES.get(size, f"Barco de {size} casillas")
     
     def is_sunk(self):
         return len(self.hits) >= self.size
@@ -33,10 +25,10 @@ class Ship:
         return False
 
 class GameBoard:
-    def __init__(self, x, y, board_size=450):
+    def __init__(self, x, y, board_size=BOARD_SIZE_DEFAULT):
         self.x = x
         self.y = y
-        self.grid_size = 10
+        self.grid_size = GRID_SIZE
         self.width = board_size
         self.height = board_size
         self.cell_size = board_size // self.grid_size
@@ -46,13 +38,13 @@ class GameBoard:
         self.shots = {}
         
         self.colors = {
-            'water': (70, 130, 180),
-            'ship': (101, 67, 33),
-            'hit': (220, 20, 60),
-            'miss': (255, 255, 255),
-            'grid': (30, 60, 100),
-            'hover': (255, 255, 0, 100),
-            'water_dark': (50, 100, 150),
+            'water': COLOR_WATER,
+            'ship': SHIP_HULL_COLOR,
+            'hit': COLOR_HIT,
+            'miss': COLOR_MISS,
+            'grid': COLOR_GRID,
+            'hover': COLOR_HOVER,
+            'water_dark': COLOR_WATER_DARK,
         }
     
     def draw(self, screen, show_ships=True):
@@ -103,7 +95,7 @@ class GameBoard:
         """Dibujar un misil realista en la posición del disparo"""
         if shot_type == 'hit':
             # Misil de impacto - más grande y con efectos de explosión
-            missile_size = self.cell_size // 3
+            missile_size = self.cell_size // MISSILE_SIZE_HIT
             
             # Cuerpo principal del misil (elipse vertical)
             missile_body = pygame.Rect(center_x - 8, center_y - 12, 16, 24)
@@ -130,15 +122,14 @@ class GameBoard:
             ])
             
             # Efecto de explosión/fuego
-            for i in range(3):
-                explosion_color = [(255, 100, 0), (255, 150, 0), (255, 200, 0)][i]
+            for i, explosion_color in enumerate(EXPLOSION_COLORS[:3]):
                 explosion_radius = 6 - i * 2
                 pygame.draw.circle(screen, explosion_color, 
                                  (center_x, center_y + 5), explosion_radius)
             
         else:  # miss
             # Misil de fallo - más pequeño, blanco/gris
-            missile_size = self.cell_size // 4
+            missile_size = self.cell_size // MISSILE_SIZE_MISS
             
             # Cuerpo principal del misil
             missile_body = pygame.Rect(center_x - 6, center_y - 10, 12, 20)
@@ -165,8 +156,7 @@ class GameBoard:
             ])
             
             # Salpicadura de agua (círculos azules)
-            splash_colors = [(100, 150, 255), (150, 200, 255), (200, 230, 255)]
-            for i, splash_color in enumerate(splash_colors):
+            for i, splash_color in enumerate(SPLASH_COLORS):
                 splash_radius = 4 - i
                 splash_y = center_y + 8 + i * 2
                 pygame.draw.circle(screen, splash_color, 
@@ -176,26 +166,26 @@ class GameBoard:
     
     def draw_coordinates(self, screen):
         """Dibujar las coordenadas del tablero"""
-        coord_font_size = max(20, min(32, self.cell_size // 2))
+        coord_font_size = max(MIN_COORD_FONT_SIZE, min(MAX_COORD_FONT_SIZE, self.cell_size // COORD_FONT_CELL_RATIO))
         coord_font = pygame.font.Font(None, coord_font_size)
-        coord_bg_width = max(25, self.cell_size // 3)
-        coord_bg_height = max(20, self.cell_size // 4)
+        coord_bg_width = max(COORD_BG_MIN_WIDTH, self.cell_size // 3)
+        coord_bg_height = max(COORD_BG_MIN_HEIGHT, self.cell_size // 4)
         
         for i in range(self.grid_size):
             # Números a la izquierda
-            num_text = coord_font.render(str(i + 1), True, (255, 255, 255))
-            num_bg = pygame.Rect(self.x - coord_bg_width - 8, self.y + i * self.cell_size + (self.cell_size - coord_bg_height) // 2, coord_bg_width, coord_bg_height)
+            num_text = coord_font.render(str(i + 1), True, COLOR_WHITE)
+            num_bg = pygame.Rect(self.x - coord_bg_width - COORD_BG_MARGIN, self.y + i * self.cell_size + (self.cell_size - coord_bg_height) // 2, coord_bg_width, coord_bg_height)
             pygame.draw.rect(screen, (50, 80, 120), num_bg)
-            pygame.draw.rect(screen, (255, 255, 255), num_bg, 1)
+            pygame.draw.rect(screen, COLOR_WHITE, num_bg, 1)
             text_rect = num_text.get_rect(center=num_bg.center)
             screen.blit(num_text, text_rect)
             
             # Letras arriba
             letter = chr(ord('A') + i)
-            letter_text = coord_font.render(letter, True, (255, 255, 255))
-            letter_bg = pygame.Rect(self.x + i * self.cell_size + (self.cell_size - coord_bg_width) // 2, self.y - coord_bg_height - 8, coord_bg_width, coord_bg_height)
+            letter_text = coord_font.render(letter, True, COLOR_WHITE)
+            letter_bg = pygame.Rect(self.x + i * self.cell_size + (self.cell_size - coord_bg_width) // 2, self.y - coord_bg_height - COORD_BG_MARGIN, coord_bg_width, coord_bg_height)
             pygame.draw.rect(screen, (50, 80, 120), letter_bg)
-            pygame.draw.rect(screen, (255, 255, 255), letter_bg, 1)
+            pygame.draw.rect(screen, COLOR_WHITE, letter_bg, 1)
             text_rect = letter_text.get_rect(center=letter_bg.center)
             screen.blit(letter_text, text_rect)
     
@@ -204,15 +194,15 @@ class GameBoard:
             return
         
         # Colores base más realistas
-        hull_color = (45, 55, 65)  # Gris azulado oscuro
-        deck_color = (120, 100, 80)  # Madera
-        metal_color = (85, 85, 85)  # Metal
-        cannon_color = (40, 40, 40)  # Negro metálico
-        detail_color = (200, 180, 140)  # Detalles dorados
-        window_color = (100, 150, 200)  # Ventanas azules
-        hit_color = (255, 0, 0)
+        hull_color = SHIP_HULL_COLOR  # Gris azulado oscuro
+        deck_color = SHIP_DECK_COLOR  # Madera
+        metal_color = SHIP_METAL_COLOR  # Metal
+        cannon_color = SHIP_CANNON_COLOR  # Negro metálico
+        detail_color = SHIP_DETAIL_COLOR  # Detalles dorados
+        window_color = SHIP_WINDOW_COLOR  # Ventanas azules
+        hit_color = COLOR_RED
         
-        margin = 2
+        margin = CELL_MARGIN
         
         min_x = min(pos[0] for pos in ship.positions)
         max_x = max(pos[0] for pos in ship.positions)
@@ -232,7 +222,7 @@ class GameBoard:
             
             # Línea de agua (más clara)
             water_line = pygame.Rect(start_pixel_x, start_pixel_y + hull_rect.height - 4, ship_width, 8)
-            pygame.draw.ellipse(screen, (65, 75, 85), water_line)
+            pygame.draw.ellipse(screen, SHIP_WATER_LINE_COLOR, water_line)
             
             # Cubierta principal
             deck_rect = pygame.Rect(start_pixel_x + 4, start_pixel_y + 8, ship_width - 8, ship_height - 20)
@@ -251,7 +241,7 @@ class GameBoard:
             
             # Línea de agua
             water_line = pygame.Rect(start_pixel_x + hull_rect.width - 4, start_pixel_y, 8, ship_height)
-            pygame.draw.ellipse(screen, (65, 75, 85), water_line)
+            pygame.draw.ellipse(screen, SHIP_WATER_LINE_COLOR, water_line)
             
             # Cubierta principal
             deck_rect = pygame.Rect(start_pixel_x + 8, start_pixel_y + 4, ship_width - 20, ship_height - 8)
@@ -267,19 +257,18 @@ class GameBoard:
                 hit_y = self.y + pos_y * self.cell_size + self.cell_size // 2
                 
                 # Efecto de explosión más dramático
-                pygame.draw.circle(screen, (255, 0, 0), (hit_x, hit_y), 12)
-                pygame.draw.circle(screen, (255, 100, 0), (hit_x, hit_y), 8)
-                pygame.draw.circle(screen, (255, 200, 0), (hit_x, hit_y), 5)
-                pygame.draw.circle(screen, (255, 255, 100), (hit_x, hit_y), 3)
+                for i, color in enumerate(EXPLOSION_COLORS):
+                    radius = 12 - i * 3
+                    pygame.draw.circle(screen, color, (hit_x, hit_y), radius)
     
     def draw_ship_superstructure(self, screen, ship, start_x, start_y, width, height, horizontal):
         """Dibujar la superestructura específica según el tipo de barco"""
         # Colores para detalles
-        metal_color = (85, 85, 85)
-        cannon_color = (40, 40, 40)
-        detail_color = (200, 180, 140)
-        window_color = (100, 150, 200)
-        radar_color = (60, 60, 60)
+        metal_color = SHIP_METAL_COLOR
+        cannon_color = SHIP_CANNON_COLOR
+        detail_color = SHIP_DETAIL_COLOR
+        window_color = SHIP_WINDOW_COLOR
+        radar_color = SHIP_RADAR_COLOR
         
         if ship.size == 5:  # Portaaviones
             self.draw_aircraft_carrier(screen, start_x, start_y, width, height, horizontal)
@@ -527,49 +516,40 @@ class GameScreen:
         self.ship_horizontal = True
         self.my_turn = False
         
-        self.ships_to_place = [5, 4, 3, 3, 2]
+        self.ships_to_place = SHIP_SIZES.copy()
         self.current_ship_index = 0
         
         # Seguimiento de barcos enemigos hundidos
         self.enemy_sunk_ships = []
         self.enemy_sunk_ships_info = {}  # Diccionario para almacenar info completa de barcos hundidos
         
-
-        
-        self.font = pygame.font.Font(None, 32)
+        self.font = pygame.font.Font(None, FONT_SIZE_NORMAL)
         
         print("✅ Sistema de barcos realistas inicializado")
     
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                self.handle_left_click(event.pos)
-            elif event.button == 3:
-                self.handle_right_click(event.pos)
-        
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r:
-                self.ship_horizontal = not self.ship_horizontal
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self.handle_left_click(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            self.handle_right_click(event.pos)
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            self.ship_horizontal = not self.ship_horizontal
     
     def handle_left_click(self, mouse_pos):
-        if self.game_phase == "placement":
+        if self.game_phase == "placement" and self.current_ship_index < len(self.ships_to_place):
             cell = self.my_board.get_cell_from_mouse(mouse_pos)
-            if cell and self.current_ship_index < len(self.ships_to_place):
+            if cell:
                 ship_size = self.ships_to_place[self.current_ship_index]
-                
                 if self.my_board.place_ship(ship_size, cell[0], cell[1], self.ship_horizontal):
                     self.current_ship_index += 1
                     if self.current_ship_index >= len(self.ships_to_place):
                         self.game_phase = "waiting_for_battle"
                         self.send_ships_to_server()
         
-        elif self.game_phase == "battle":
-            if self.my_turn:
-                cell = self.enemy_board.get_cell_from_mouse(mouse_pos)
-                if cell and cell not in self.enemy_board.shots:
-                    if self.network_manager:
-                        self.network_manager.make_shot(cell[0], cell[1])
-                        # No cambiar el turno aquí - esperar respuesta del servidor
+        elif self.game_phase == "battle" and self.my_turn:
+            cell = self.enemy_board.get_cell_from_mouse(mouse_pos)
+            if cell and cell not in self.enemy_board.shots and self.network_manager:
+                self.network_manager.make_shot(cell[0], cell[1])
     
     def handle_right_click(self, mouse_pos):
         self.ship_horizontal = not self.ship_horizontal
@@ -582,12 +562,12 @@ class GameScreen:
         
         self.draw_board_panels()
         
-        title_font = pygame.font.Font(None, 56)
-        title_text = title_font.render("BATALLA NAVAL", True, (255, 255, 255))
+        title_font = pygame.font.Font(None, FONT_SIZE_TITLE)
+        title_text = title_font.render("BATALLA NAVAL", True, COLOR_WHITE)
         title_rect = title_text.get_rect(center=(self.width // 2, 35))
         self.screen.blit(title_text, title_rect)
         
-        board_font = pygame.font.Font(None, 42)
+        board_font = pygame.font.Font(None, FONT_SIZE_BOARD_TITLE)
         
         # Posicionar títulos fuera del recuadro, con espacio de separación
         title_spacing = 15  # Espacio entre título y panel del tablero

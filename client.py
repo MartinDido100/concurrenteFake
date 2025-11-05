@@ -1,5 +1,5 @@
 import asyncio
-import sys
+from constants import *
 
 
 class Client:
@@ -13,7 +13,7 @@ class Client:
         try:
             while self.connected and self.reader:
                 # Recibir respuesta del servidor de forma asíncrona
-                data = await self.reader.read(1024)
+                data = await self.reader.read(NETWORK_BUFFER_SIZE)
                 
                 if not data:
                     # El servidor cerró la conexión
@@ -72,9 +72,9 @@ class Client:
             print("� Conectando al servidor...")
             
             # Crear conexión asíncrona
-            self.reader, self.writer = await asyncio.open_connection("127.0.0.1", 8888)
+            self.reader, self.writer = await asyncio.open_connection(DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT)
             
-            print("✅ Conectado al servidor en 127.0.0.1:8888")
+            print(f"✅ Conectado al servidor en {DEFAULT_SERVER_HOST}:{DEFAULT_SERVER_PORT}")
             print("💡 Escribe 'fin' para desconectarte")
             print("💡 El cliente se cerrará automáticamente si el servidor se desconecta")
             

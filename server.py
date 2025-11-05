@@ -1,12 +1,13 @@
 import asyncio
 import json
 import logging
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 from enum import Enum
 import uuid
+from constants import *
 
 # Configurar logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
 class Ship:
@@ -25,16 +26,7 @@ class Ship:
         
     def get_ship_name_by_size(self, size: int) -> str:
         """Obtener el nombre del barco según su tamaño"""
-        if size == 5:
-            return "Portaaviones"
-        elif size == 4:
-            return "Destructor Acorazado"
-        elif size == 3:
-            return "Barco de Ataque"
-        elif size == 2:
-            return "Lancha Rapida"
-        else:
-            return f"Barco de {size} casillas"
+        return SHIP_NAMES.get(size, f"Barco de {size} casillas")
     
     def contains_position(self, x: int, y: int) -> bool:
         """Verificar si el barco contiene la posición (x, y)"""
@@ -85,7 +77,7 @@ class Player:
         self.writer = writer
         self.ships_placed = False
         self.ready = False
-        self.grid = [[0 for _ in range(10)] for _ in range(10)]  # 0 = agua, 1 = barco, 2 = golpeado, 3 = agua golpeada
+        self.grid = [[CELL_EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]  # 0 = agua, 1 = barco, 2 = golpeado, 3 = agua golpeada
         self.ships = []  # Lista de objetos Ship
         
     async def send_message(self, message_type: MessageType, data=None):
@@ -114,8 +106,8 @@ class Player:
         # Validar que todas las posiciones estén dentro del tablero
         valid_positions = []
         for x, y in positions:
-            if 0 <= x < 10 and 0 <= y < 10:
-                self.grid[y][x] = 1
+            if MIN_COORDINATE <= x < GRID_SIZE and MIN_COORDINATE <= y < GRID_SIZE:
+                self.grid[y][x] = CELL_SHIP
                 valid_positions.append((x, y))
             else:
                 logger.warning(f"Posición fuera del tablero ignorada: ({x}, {y})")
@@ -145,20 +137,20 @@ class Player:
             dict con 'result' ('hit', 'miss', 'sunk') y opcionalmente 'ship_info'
         """
         # Controlar que el tiro caiga en el tablero
-        if not (0 <= x < 10 and 0 <= y < 10):
+        if not (MIN_COORDINATE <= x < GRID_SIZE and MIN_COORDINATE <= y < GRID_SIZE):
             logger.warning(f"Disparo fuera del tablero: ({x}, {y})")
             return {'result': 'miss'}
         
         # Verificar el estado actual de la celda
         current_cell = self.grid[y][x]
         
-        if current_cell == 0:  # Agua
-            self.grid[y][x] = 3  # Marcar agua como golpeada
+        if current_cell == CELL_EMPTY:  # Agua
+            self.grid[y][x] = CELL_WATER_HIT  # Marcar agua como golpeada
             logger.info(f"Disparo al agua en ({x}, {y})")
             return {'result': 'miss'}
         
-        elif current_cell == 1:  # Barco no golpeado
-            self.grid[y][x] = 2  # Marcar como golpeado
+        if current_cell == CELL_SHIP:  # Barco no golpeado
+            self.grid[y][x] = CELL_HIT  # Marcar como golpeado
             
             # Buscar el barco al que pertenecen las coordenadas
             ship = self.find_ship_containing(x, y)
@@ -185,17 +177,9 @@ class Player:
             else:
                 return {'result': 'hit'}
         
-        elif current_cell == 2:  # Barco ya golpeado
-            logger.info(f"Disparo a posición ya golpeada: ({x}, {y})")
-            return {'result': 'miss'}  # O podrías retornar un estado especial
-        
-        elif current_cell == 3:  # Agua ya golpeada
-            logger.info(f"Disparo a agua ya golpeada: ({x}, {y})")
-            return {'result': 'miss'}  # O podrías retornar un estado especial
-        
-        else:
-            logger.error(f"Estado de celda desconocido: {current_cell} en ({x}, {y})")
-            return {'result': 'miss'}
+        # Barco ya golpeado o agua ya golpeada
+        logger.info(f"Disparo a posición ya golpeada: ({x}, {y})")
+        return {'result': 'miss'}
     
     def all_ships_sunk(self) -> bool:
         """Verificar si todos los barcos fueron hundidos"""
@@ -204,7 +188,7 @@ class Player:
         return all(ship.is_sunk() for ship in self.ships)
 
 class BattleshipServer:
-    def __init__(self, host='0.0.0.0', port=8888):
+    def __init__(self, host='0.0.0.0', port=DEFAULT_SERVER_PORT):
         """
         Inicializar servidor de Batalla Naval
         host='0.0.0.0' permite conexiones desde cualquier IP (LAN y Online)
@@ -213,7 +197,7 @@ class BattleshipServer:
         self.host = host
         self.port = port
         self.players: Dict[str, Player] = {}
-        self.max_players = 2
+        self.max_players = MAX_PLAYERS
         self.game_state = GameState.WAITING_PLAYERS
         self.current_turn = None  # ID del jugador que tiene el turno
         
@@ -232,7 +216,7 @@ class BattleshipServer:
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """Manejar conexión de un cliente"""
         client_addr = writer.get_extra_info('peername')
-        player_id = str(uuid.uuid4())[:8]
+        player_id = str(uuid.uuid4())[:UUID_SHORT_LENGTH]
         
         logger.info(f"Nuevo cliente conectado desde {client_addr}, ID: {player_id}")
         
@@ -258,7 +242,7 @@ class BattleshipServer:
             while self.players.get(player_id) is not None:
                 try:
                     # Leer con timeout para detectar desconexiones
-                    line = await asyncio.wait_for(reader.readline(), timeout=1.0)
+                    line = await asyncio.wait_for(reader.readline(), timeout=SERVER_READ_TIMEOUT)
                     
                     if not line:
                         # Cliente desconectado - no hay más datos
@@ -408,7 +392,7 @@ class BattleshipServer:
             
             # Limpiar barcos anteriores
             player.ships = []
-            player.grid = [[0 for _ in range(10)] for _ in range(10)]
+            player.grid = [[CELL_EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
             
             # Colocar cada barco
             for ship_positions in ships_data:

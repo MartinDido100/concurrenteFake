@@ -7,14 +7,12 @@ import asyncio
 import subprocess
 import time
 import sys
-import os
-import json
-import threading
 import requests
 from server import main as server_main
+from constants import *
 
 class NgrokManager:
-    def __init__(self, port=8888):
+    def __init__(self, port=DEFAULT_SERVER_PORT):
         self.port = port
         self.ngrok_process = None
         self.public_url = None
@@ -51,7 +49,7 @@ class NgrokManager:
             )
             
             # Esperar un momento para que ngrok se inicie
-            time.sleep(3)
+            time.sleep(NGROK_STARTUP_DELAY)
             
             # Obtener la URL pública desde la API de ngrok
             self.public_url = self.get_ngrok_url()
@@ -82,10 +80,10 @@ class NgrokManager:
     
     def get_ngrok_url(self):
         """Obtener URL pública desde la API local de ngrok"""
-        max_attempts = 10
+        max_attempts = NGROK_MAX_ATTEMPTS
         for attempt in range(max_attempts):
             try:
-                response = requests.get('http://localhost:4040/api/tunnels', timeout=2)
+                response = requests.get(f'http://localhost:{NGROK_API_PORT}/api/tunnels', timeout=2)
                 if response.status_code == 200:
                     tunnels = response.json()['tunnels']
                     if tunnels:
@@ -98,7 +96,7 @@ class NgrokManager:
             except requests.exceptions.RequestException:
                 if attempt < max_attempts - 1:
                     print(f"⏳ Esperando ngrok... (intento {attempt + 1}/{max_attempts})")
-                    time.sleep(2)
+                    time.sleep(NGROK_WAIT_TIME)
                 else:
                     print("❌ No se pudo conectar a la API de ngrok")
         return None
@@ -119,7 +117,7 @@ class NgrokManager:
             print("🛑 Deteniendo túnel ngrok...")
             self.ngrok_process.terminate()
             try:
-                self.ngrok_process.wait(timeout=5)
+                self.ngrok_process.wait(timeout=SERVER_CLOSE_TIMEOUT)
             except subprocess.TimeoutExpired:
                 self.ngrok_process.kill()
             self.ngrok_process = None
@@ -139,7 +137,7 @@ def print_instructions():
     print("\n" + "=" * 80)
     print("📋 INSTRUCCIONES:")
     print("=" * 80)
-    print("1. El servidor se iniciará automáticamente en el puerto 8888")
+    print(f"1. El servidor se iniciará automáticamente en el puerto {DEFAULT_SERVER_PORT}")
     print("2. ngrok creará un túnel público hacia tu servidor local")
     print("3. Comparte la URL de ngrok (host y puerto) con otros jugadores")
     print("4. Los jugadores deben ingresar estos datos en el cliente")

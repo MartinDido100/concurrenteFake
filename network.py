@@ -1,13 +1,14 @@
 import socket
 import json
 import threading
+from constants import *
 
 class NetworkManager:
     def __init__(self):
         self.socket = None
         self.connected = False
-        self.server_host = "localhost"
-        self.server_port = 8888  # Puerto original
+        self.server_host = DEFAULT_SERVER_HOST
+        self.server_port = DEFAULT_SERVER_PORT  # Puerto original
         self.player_id = None
         
         # Callbacks para eventos del servidor
@@ -60,19 +61,13 @@ class NetworkManager:
                 'player_id': self.player_id,
                 'data': data
             }
-            message_json = json.dumps(message) + '\n'  # Agregar salto de línea
+            message_json = json.dumps(message) + '\n'
             print(f"📤 Enviando mensaje al servidor: {message_json.strip()}")
             self.socket.send(message_json.encode('utf-8'))
             print(f"✅ Mensaje enviado exitosamente")
             return True
-        except ConnectionResetError:
-            print("🔌 Error: Servidor desconectado durante envío")
-            self.connected = False
-            if self.on_server_disconnect:
-                self.on_server_disconnect()
-            return False
-        except ConnectionAbortedError:
-            print("🔌 Error: Conexión abortada durante envío")
+        except (ConnectionResetError, ConnectionAbortedError) as e:
+            print(f"🔌 Error: Servidor desconectado durante envío")
             self.connected = False
             if self.on_server_disconnect:
                 self.on_server_disconnect()
@@ -86,7 +81,7 @@ class NetworkManager:
         buffer = ""
         while self.connected:
             try:
-                data = self.socket.recv(1024).decode('utf-8')
+                data = self.socket.recv(NETWORK_BUFFER_SIZE).decode('utf-8')
                 if data:
                     buffer += data
                     # Procesar mensajes separados por líneas
@@ -99,20 +94,15 @@ class NetworkManager:
                             except json.JSONDecodeError as e:
                                 print(f"Error decodificando JSON: {e}")
                 else:
-                    # El servidor cerró la conexión
                     print("🔌 Servidor desconectado - No se recibieron más datos")
                     break
-            except ConnectionResetError:
-                print("🔌 Servidor desconectado - Conexión resetteada")
-                break
-            except ConnectionAbortedError:
-                print("🔌 Servidor desconectado - Conexión abortada")
+            except (ConnectionResetError, ConnectionAbortedError):
+                print("🔌 Servidor desconectado - Conexión resetteada/abortada")
                 break
             except Exception as e:
                 print(f"❌ Error recibiendo mensaje: {e}")
                 break
         
-        # Marcar como desconectado y notificar
         self.connected = False
         if self.on_server_disconnect:
             print("📞 Notificando desconexión del servidor")
