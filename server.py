@@ -9,6 +9,58 @@ import uuid
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+class Ship:
+    def __init__(self, positions: List[tuple], ship_type: str = None):
+        """
+        Inicializar un barco con sus posiciones.
+        
+        Args:
+            positions: Lista de tuplas (x, y) que representan las posiciones del barco
+            ship_type: Tipo de barco (opcional)
+        """
+        self.positions = set(positions)  # Usar set para búsqueda más eficiente
+        self.hit_positions = set()  # Posiciones que han sido golpeadas
+        self.size = len(positions)
+        self.ship_type = ship_type or self.get_ship_name_by_size(self.size)
+        
+    def get_ship_name_by_size(self, size: int) -> str:
+        """Obtener el nombre del barco según su tamaño"""
+        if size == 5:
+            return "Portaaviones"
+        elif size == 4:
+            return "Destructor Acorazado"
+        elif size == 3:
+            return "Barco de Ataque"
+        elif size == 2:
+            return "Lancha Rapida"
+        else:
+            return f"Barco de {size} casillas"
+    
+    def contains_position(self, x: int, y: int) -> bool:
+        """Verificar si el barco contiene la posición (x, y)"""
+        return (x, y) in self.positions
+    
+    def hit(self, x: int, y: int) -> bool:
+        """
+        Marcar una posición como golpeada si pertenece al barco.
+        
+        Returns:
+            True si la posición pertenece al barco y fue golpeada
+            False si la posición no pertenece al barco
+        """
+        if (x, y) in self.positions:
+            self.hit_positions.add((x, y))
+            return True
+        return False
+    
+    def is_sunk(self) -> bool:
+        """Verificar si el barco está hundido (todas sus posiciones fueron golpeadas)"""
+        return len(self.hit_positions) == len(self.positions)
+    
+    def get_remaining_positions(self) -> set:
+        """Obtener las posiciones del barco que aún no han sido golpeadas"""
+        return self.positions - self.hit_positions
+
 class GameState(Enum):
     WAITING_PLAYERS = "waiting_players"
     PLACEMENT_PHASE = "placement_phase"
@@ -34,8 +86,7 @@ class Player:
         self.ships_placed = False
         self.ready = False
         self.grid = [[0 for _ in range(10)] for _ in range(10)]  # 0 = agua, 1 = barco, 2 = golpeado, 3 = agua golpeada
-        self.ships = []  # Lista de posiciones de barcos
-        self.hits_received = set()  # Posiciones donde fue golpeado
+        self.ships = []  # Lista de objetos Ship
         
     async def send_message(self, message_type: MessageType, data=None):
         """Enviar mensaje al cliente"""
@@ -60,53 +111,97 @@ class Player:
     
     def place_ship(self, positions: List[tuple]):
         """Colocar un barco en el grid"""
+        # Validar que todas las posiciones estén dentro del tablero
+        valid_positions = []
         for x, y in positions:
             if 0 <= x < 10 and 0 <= y < 10:
                 self.grid[y][x] = 1
-        self.ships.append(positions)
-    
-    def receive_shot(self, x: int, y: int) -> str:
-        """Procesar disparo recibido. Retorna 'hit', 'miss', o 'sunk'"""
-        if not (0 <= x < 10 and 0 <= y < 10):
-            return 'miss'
+                valid_positions.append((x, y))
+            else:
+                logger.warning(f"Posición fuera del tablero ignorada: ({x}, {y})")
         
-        if self.grid[y][x] == 1:  # Barco
-            self.grid[y][x] = 2  # Marcar como golpeado
-            self.hits_received.add((x, y))
-            
-            # Verificar si el barco fue hundido
-            for ship_positions in self.ships:
-                logger.info(f"Barco: {ship_positions}")
-                if (x, y) in ship_positions:
-                    logger.info(f"Coordenada {x, y} encontrada en barco {ship_positions}")
-                    # Verificar si todas las posiciones del barco fueron golpeadas
-                    if all((sy, sx) in self.hits_received for sx, sy in ship_positions):
-                        return 'sunk'
-                    break
-                    logger.info(f"Coordenada {x, y} todav   ía faltan posiciones por golpear")
-            return 'hit'
+        if valid_positions:
+            ship = Ship(valid_positions)
+            self.ships.append(ship)
+            logger.info(f"Barco colocado: {ship.ship_type} en posiciones {valid_positions}")
         else:
-            if self.grid[y][x] == 0:  # Agua
-                self.grid[y][x] = 3  # Marcar agua como golpeada
-            return 'miss'
+            logger.error("No se pudieron colocar posiciones válidas para el barco")
     
-    def get_ship_name_by_size(self, size: int) -> str:
-        """Obtener el nombre del barco según su tamaño"""
-        if size == 5:
-            return "Portaaviones"
-        elif size == 4:
-            return "Destructor Acorazado"
-        elif size == 3:
-            return "Barco de Ataque"
-        elif size == 2:
-            return "Lancha Rapida"
+    def find_ship_containing(self, x: int, y: int):
+        """Return the Ship that contains the coordinate (x,y).
+
+        If no ship contains the coordinate, return None.
+        """
+        for ship in self.ships:
+            if ship.contains_position(x, y):
+                return ship
+        return None
+    
+    def receive_shot(self, x: int, y: int) -> dict:
+        """
+        Procesar disparo recibido. 
+        
+        Returns:
+            dict con 'result' ('hit', 'miss', 'sunk') y opcionalmente 'ship_info'
+        """
+        # Controlar que el tiro caiga en el tablero
+        if not (0 <= x < 10 and 0 <= y < 10):
+            logger.warning(f"Disparo fuera del tablero: ({x}, {y})")
+            return {'result': 'miss'}
+        
+        # Verificar el estado actual de la celda
+        current_cell = self.grid[y][x]
+        
+        if current_cell == 0:  # Agua
+            self.grid[y][x] = 3  # Marcar agua como golpeada
+            logger.info(f"Disparo al agua en ({x}, {y})")
+            return {'result': 'miss'}
+        
+        elif current_cell == 1:  # Barco no golpeado
+            self.grid[y][x] = 2  # Marcar como golpeado
+            
+            # Buscar el barco al que pertenecen las coordenadas
+            ship = self.find_ship_containing(x, y)
+            
+            if ship is None:
+                logger.error(f"ERROR: No se encontró barco en posición ({x}, {y}) que debería tener uno")
+                return {'result': 'hit'}
+            
+            # Marcar la posición como golpeada en el barco
+            ship.hit(x, y)
+            logger.info(f"Golpe en {ship.ship_type} en posición ({x}, {y})")
+            
+            # Verificar si el barco está hundido
+            if ship.is_sunk():
+                logger.info(f"¡{ship.ship_type} hundido!")
+                return {
+                    'result': 'sunk',
+                    'ship_info': {
+                        'name': ship.ship_type,
+                        'size': ship.size,
+                        'positions': list(ship.positions)
+                    }
+                }
+            else:
+                return {'result': 'hit'}
+        
+        elif current_cell == 2:  # Barco ya golpeado
+            logger.info(f"Disparo a posición ya golpeada: ({x}, {y})")
+            return {'result': 'miss'}  # O podrías retornar un estado especial
+        
+        elif current_cell == 3:  # Agua ya golpeada
+            logger.info(f"Disparo a agua ya golpeada: ({x}, {y})")
+            return {'result': 'miss'}  # O podrías retornar un estado especial
+        
         else:
-            return f"Barco de {size} casillas"
+            logger.error(f"Estado de celda desconocido: {current_cell} en ({x}, {y})")
+            return {'result': 'miss'}
     
     def all_ships_sunk(self) -> bool:
         """Verificar si todos los barcos fueron hundidos"""
-        total_ship_positions = sum(len(ship) for ship in self.ships)
-        return len(self.hits_received) == total_ship_positions
+        if not self.ships:
+            return False
+        return all(ship.is_sunk() for ship in self.ships)
 
 class BattleshipServer:
     def __init__(self, host='0.0.0.0', port=8888):
@@ -317,10 +412,13 @@ class BattleshipServer:
             
             # Colocar cada barco
             for ship_positions in ships_data:
-                player.place_ship(ship_positions)
+                if isinstance(ship_positions, list) and len(ship_positions) > 0:
+                    player.place_ship(ship_positions)
+                else:
+                    logger.warning(f"Datos de barco inválidos: {ship_positions}")
             
             player.ships_placed = True
-            logger.info(f"Jugador {player.player_id} ha colocado sus barcos")
+            logger.info(f"Jugador {player.player_id} ha colocado {len(player.ships)} barcos")
             
             # Verificar si ambos jugadores han colocado sus barcos
             if self.all_players_ready():
@@ -358,14 +456,20 @@ class BattleshipServer:
             return
         
         opponent = self.players[opponent_id]
-        result = opponent.receive_shot(x, y)
+        shot_result = opponent.receive_shot(x, y)
+        result = shot_result['result']
         
-        # Enviar resultado del disparo
+        # Construir datos del disparo
         shot_data = {
             'x': x, 'y': y, 'result': result,
             'shooter': shooter_id, 'target': opponent_id
         }
         
+        # Agregar información del barco si fue hundido
+        if result == 'sunk' and 'ship_info' in shot_result:
+            shot_data['ship_info'] = shot_result['ship_info']
+        
+        # Enviar resultado del disparo a ambos jugadores
         for player in self.players.values():
             await player.send_message(MessageType.SHOT_RESULT, shot_data)
         
