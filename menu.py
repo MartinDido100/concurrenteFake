@@ -90,35 +90,25 @@ class MenuScreen:
         # Actualizar estado de los botones basado en conexión
         pass
     
-    def draw(self):
+    def draw_background(self):
         # Dibujar fondo
         if self.menu_image:
             self.screen.blit(self.menu_image, (0, 0))
         else:
             self.screen.fill((30, 30, 60))
-        
-        # Dibujar botones
-        mouse_pos = pygame.mouse.get_pos()
-        
-        for button in self.buttons:
-            # Determinar color del botón
-            if not button['enabled']:
-                color = button.get('disabled_color', (100, 100, 100))
-            elif button['rect'].collidepoint(mouse_pos):
-                color = button['hover_color']
-            else:
-                color = button['color']
+
+    def draw_button(self, button, color):
+        # Dibujar botón
+        pygame.draw.rect(self.screen, color, button['rect'])
+        pygame.draw.rect(self.screen, COLOR_WHITE, button['rect'], 3)
             
-            # Dibujar botón
-            pygame.draw.rect(self.screen, color, button['rect'])
-            pygame.draw.rect(self.screen, COLOR_WHITE, button['rect'], 3)
-            
-            # Dibujar texto del botón
-            text_surface = self.font.render(button['text'], True, button['text_color'])
-            text_rect = text_surface.get_rect(center=button['rect'].center)
-            self.screen.blit(text_surface, text_rect)
-        
-        # Actualizar texto y estado de botones según conexión
+        # Dibujar texto del botón
+        text_surface = self.font.render(button['text'], True, button['text_color'])
+        text_rect = text_surface.get_rect(center=button['rect'].center)
+        self.screen.blit(text_surface, text_rect)
+
+    def update_connection_status(self):
+        """Actualizar estado de botones y texto según conexión"""
         if self.server_connected:
             # Cambiar texto y deshabilitar botón conectar si ya estamos conectados
             self.connect_button['text'] = 'Conectado'
@@ -141,6 +131,33 @@ class MenuScreen:
             status_color = (255, 100, 100)
             self.start_button['enabled'] = False
         
+        return status_text, status_color
+
+    def render_all_buttons(self, mouse_pos):
+        """Renderizar todos los botones del menú"""
+        for button in self.buttons:
+            # Determinar color del botón
+            if not button['enabled']:
+                color = button.get('disabled_color', (100, 100, 100))
+            elif button['rect'].collidepoint(mouse_pos):
+                color = button['hover_color']
+            else:
+                color = button['color']
+            
+            # Dibujar botón
+            self.draw_button(button, color)
+
+    def draw(self):
+
+        self.draw_background()
+
+        # Dibujar botones
+        mouse_pos = pygame.mouse.get_pos()
+        self.render_all_buttons(mouse_pos)
+        
+        # Actualizar texto y estado de botones según conexión
+        status_text, status_color = self.update_connection_status()
+        
         # Mostrar estado de conexión
         status_font = pygame.font.Font(None, FONT_SIZE_NORMAL)
         
@@ -150,6 +167,7 @@ class MenuScreen:
         
         # Dibujar botón de música
         self.draw_mute_button(mouse_pos)
+        
     
     def draw_mute_button(self, mouse_pos):
         """Dibujar el botón de control de música"""

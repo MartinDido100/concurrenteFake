@@ -13,6 +13,7 @@ class ConnectionDialog:
         self.width = screen.get_width()
         self.height = screen.get_height()
         
+        #copiar pegar para el puerto, pero esto queda harcodeado para el host
         # Inicializar el módulo de portapapeles para Ctrl+V
         try:
             pygame.scrap.init()
