@@ -200,7 +200,7 @@ class BattleshipClient:
                             host = connection_config['host']
                             port = connection_config['port']
                             
-                            print(f"🔌 Intentando conectar a servidor ngrok...")
+                            print(f"🔌 Intentando conectar al servidor...")
                             print(f"   Host: {host}")
                             print(f"   Puerto: {port}")
                             

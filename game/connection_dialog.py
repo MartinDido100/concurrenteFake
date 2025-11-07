@@ -201,7 +201,7 @@ class ConnectionDialog:
         self.screen.blit(title, title_rect)
         
         # Subtítulo
-        subtitle = self.font_small.render("Ingresa la dirección del servidor ngrok:", True, (200, 200, 200))
+        subtitle = self.font_small.render("Ingresa la dirección del servidor:", True, (200, 200, 200))
         subtitle_rect = subtitle.get_rect(center=(self.width//2, 170))
         self.screen.blit(subtitle, subtitle_rect)
         
@@ -233,10 +233,10 @@ class ConnectionDialog:
             # Si está vacío, mostrar placeholder
             if not text_value:
                 if field['name'] == 'host':
-                    placeholder = "Ejemplo: 0.tcp.ngrok.io"
+                    placeholder = "Ejemplo: 192.168.1.100 o IP del servidor"
                     placeholder_color = (120, 120, 120)
                 else:  # port
-                    placeholder = "Ejemplo: 12345"
+                    placeholder = "Ejemplo: 8888"
                     placeholder_color = (120, 120, 120)
                 
                 text = self.font_normal.render(placeholder, True, placeholder_color)
