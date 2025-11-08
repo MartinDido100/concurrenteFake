@@ -7,7 +7,12 @@ Versión para VM con configuración de host y puerto
 import asyncio
 import argparse
 import sys
+import os
 import signal
+
+# Agregar el directorio padre al path para importar constants compartido
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from server import main as server_main
 from constants import *
 

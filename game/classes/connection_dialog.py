@@ -5,6 +5,10 @@ Permite introducir la dirección del servidor
 
 import pygame
 import sys
+import os
+
+# Importar constants desde la carpeta padre del proyecto
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from constants import *
 
 class ConnectionDialog:
@@ -101,80 +105,97 @@ class ConnectionDialog:
             'color': COLOR_BUTTON_CANCEL,
             'hover_color': COLOR_BUTTON_CANCEL_HOVER
         }
+        
+        # Configurar valores por defecto realistas para desarrollo
+        self.port_input = str(DEFAULT_SERVER_PORT)  # 8888
+        # Dejar host vacío para que el usuario ingrese la IP manualmente
     
     def handle_event(self, event):
         """Manejar eventos del diálogo"""
         if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = event.pos
-            
-            if self.host_field['rect'].collidepoint(mouse_pos):
+            # Check si se hizo clic en un campo
+            if self.host_field['rect'].collidepoint(event.pos):
                 self.active_input = 'host'
-            elif self.port_field['rect'].collidepoint(mouse_pos):
+            elif self.port_field['rect'].collidepoint(event.pos):
                 self.active_input = 'port'
-            elif self.connect_button['rect'].collidepoint(mouse_pos):
+            elif self.connect_button['rect'].collidepoint(event.pos):
                 self._handle_connect()
-            elif self.cancel_button['rect'].collidepoint(mouse_pos):
-                self.result = None
-                self.active = False
+            elif self.cancel_button['rect'].collidepoint(event.pos):
+                self._handle_cancel()
         
         elif event.type == pygame.KEYDOWN:
-            self._handle_keydown(event)
+            if event.key == pygame.K_ESCAPE:
+                self._handle_cancel()
+            else:
+                self._handle_text_input(event)
     
     def _handle_connect(self):
-        """Manejar botón de conectar"""
+        """Intentar conectar con los valores ingresados"""
+        # Validar host
         if not self.host_input.strip():
-            print("⚠️ Debes ingresar el Host/IP")
+            print("❌ Host vacío - necesitas ingresar una IP")
             return
         
-        if not self.port_input.strip() or not self.port_input.isdigit():
-            print("⚠️ Debes ingresar un puerto válido")
+        # Validar puerto
+        if not self.port_input.strip():
+            print("❌ Puerto vacío - usando puerto por defecto")
+            self.port_input = str(DEFAULT_SERVER_PORT)
+        
+        try:
+            port = int(self.port_input.strip())
+            if not (MIN_PORT_NUMBER <= port <= MAX_PORT_NUMBER):
+                print(f"❌ Puerto fuera de rango válido ({MIN_PORT_NUMBER}-{MAX_PORT_NUMBER})")
+                return
+        except ValueError:
+            print("❌ Puerto inválido - debe ser un número")
             return
         
+        # Todo válido - cerrar diálogo con el resultado
         self.result = {
             'host': self.host_input.strip(),
-            'port': int(self.port_input)
+            'port': port
         }
         self.active = False
+        print(f"✅ Conectando a {self.result['host']}:{self.result['port']}")
     
-    def _handle_keydown(self, event):
-        """Manejar eventos de teclado"""
-        if event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
-            self._handle_paste()
-        elif self.active_input == 'host':
+    def _handle_cancel(self):
+        """Cancelar el diálogo"""
+        self.result = None
+        self.active = False
+    
+    def _handle_text_input(self, event):
+        """Manejar entrada de texto"""
+        if self.active_input == 'host':
             self._handle_host_input(event)
         elif self.active_input == 'port':
             self._handle_port_input(event)
     
-    def _handle_paste(self):
-        """Manejar Ctrl+V para pegar"""
-        if self.active_input != 'host':
-            return
-        
-        try:
-            clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
-            if clipboard_text:
-                pasted_text = clipboard_text.decode('utf-8').strip()
-                pasted_text = ''.join(c for c in pasted_text if c.isprintable() and c not in '\n\r\t')
-                if len(pasted_text) <= MAX_HOST_LENGTH:
-                    self.host_input = pasted_text
-                else:
-                    self.host_input = pasted_text[:MAX_HOST_LENGTH]
-        except Exception as e:
-            print(f"❌ Error al pegar del portapapeles: {e}")
-    
     def _handle_host_input(self, event):
-        """Manejar entrada de texto en el campo host"""
+        """Manejar input del campo host"""
         if event.key == pygame.K_BACKSPACE:
             self.host_input = self.host_input[:-1]
+        elif event.key == pygame.K_v and pygame.key.get_pressed()[pygame.K_LCTRL]:
+            # Ctrl+V para pegar desde el portapapeles (solo el host)
+            try:
+                clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+                if clipboard_text:
+                    pasted_text = clipboard_text.decode('utf-8').strip()
+                    # Filtrar solo caracteres válidos para IP/hostname
+                    valid_chars = ''.join(c for c in pasted_text if c.isalnum() or c in '.-_')
+                    if valid_chars and len(self.host_input + valid_chars) <= MAX_HOST_LENGTH:
+                        self.host_input += valid_chars
+                        print(f"📋 Pegado desde portapapeles: {valid_chars}")
+            except Exception as e:
+                print(f"❌ Error al pegar: {e}")
         elif event.key == pygame.K_TAB:
             self.active_input = 'port'
         elif event.key == pygame.K_RETURN:
             self._handle_connect()
-        elif event.unicode and len(self.host_input) < MAX_HOST_LENGTH:
+        elif event.unicode and (event.unicode.isalnum() or event.unicode in '.-_') and len(self.host_input) < MAX_HOST_LENGTH:
             self.host_input += event.unicode
     
     def _handle_port_input(self, event):
-        """Manejar entrada de texto en el campo puerto"""
+        """Manejar input del campo puerto"""
         if event.key == pygame.K_BACKSPACE:
             self.port_input = self.port_input[:-1]
         elif event.key == pygame.K_TAB:

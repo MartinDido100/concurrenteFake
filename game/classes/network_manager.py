@@ -1,6 +1,16 @@
+"""
+Gestor de red para el juego Batalla Naval
+Maneja la comunicación con el servidor
+"""
+
 import socket
 import json
 import threading
+import sys
+import os
+
+# Importar constants desde la carpeta padre del proyecto
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from constants import *
 
 class NetworkManager:

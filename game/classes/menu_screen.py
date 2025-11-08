@@ -1,5 +1,14 @@
+"""
+Pantalla del menú principal del juego Batalla Naval
+Permite conectar al servidor y iniciar partidas
+"""
+
 import pygame
 import os
+import sys
+
+# Importar constants desde la carpeta padre del proyecto
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from constants import *
 
 class MenuScreen:

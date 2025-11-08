@@ -1,6 +1,15 @@
-import asyncio
-from constants import *
+"""
+Cliente asíncrono para el juego Batalla Naval
+Maneja la comunicación de red con el servidor usando asyncio
+"""
 
+import asyncio
+import sys
+import os
+
+# Importar constants desde la carpeta padre del proyecto
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+from constants import *
 
 class Client:
     def __init__(self):
@@ -69,7 +78,7 @@ class Client:
     async def client(self):
         """Cliente principal asíncrono"""
         try:
-            print("� Conectando al servidor...")
+            print("🔄 Conectando al servidor...")
             
             # Crear conexión asíncrona
             self.reader, self.writer = await asyncio.open_connection(DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT)
@@ -112,8 +121,7 @@ class Client:
                 except Exception as e:
                     print(f"Error closing writer: {e}")
 
-
-async def main():
+async def client_main():
     """Función principal del cliente"""
     client = Client()
     try:
@@ -124,10 +132,3 @@ async def main():
         print(f"❌ Error inesperado en el cliente: {e}")
     finally:
         print("👋 ¡Adiós!")
-
-# Ejecución directa
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n🚨 Forzando cierre del cliente...")
