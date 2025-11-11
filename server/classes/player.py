@@ -4,8 +4,9 @@ import sys
 import os
 from typing import List
 
-# Importar ServerShip desde el mismo directorio
-from server_ship import ServerShip
+# Importar Ship desde el cliente (ahora es una clase unificada)
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'game', 'classes'))
+from ship import Ship
 
 # Importar constantes y enums
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -58,7 +59,7 @@ class Player:
                 logger.warning(f"Posición fuera del tablero ignorada: ({x}, {y})")
         
         if valid_positions:
-            ship = ServerShip(valid_positions)
+            ship = Ship(positions=valid_positions)
             self.ships.append(ship)
             logger.info(f"Barco colocado: {ship.ship_type} en posiciones {valid_positions}")
         else:

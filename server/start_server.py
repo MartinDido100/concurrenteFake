@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Script para iniciar el servidor de Batalla Naval sin ngrok
-Versión para VM con configuración de host y puerto
-"""
 
 import asyncio
 import argparse
