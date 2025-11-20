@@ -120,54 +120,52 @@ class GameBoard:
     
     def _draw_hit_missile(self, screen, center_x, center_y, color):
         """Dibuja misil de impacto con efectos de explosión."""
-        # Cuerpo principal del misil
-        missile_body = pygame.Rect(center_x - MISSILE_BODY_OFFSET_X, center_y - MISSILE_BODY_OFFSET_Y, 
-                                 MISSILE_BODY_WIDTH, MISSILE_BODY_HEIGHT)
-        pygame.draw.ellipse(screen, color, missile_body)
-        
-        self._draw_missile_tip(screen, center_x, center_y, MISSILE_TIP_OFFSET, MISSILE_TIP_WIDTH, (180, 15, 45))
-        self._draw_missile_fins(screen, center_x, center_y, MISSILE_BODY_OFFSET_X, (150, 10, 30))
+        self._draw_missile_body(screen, center_x, center_y, color)
+        self._draw_missile_tip(screen, center_x, center_y, (180, 15, 45))
+        self._draw_missile_fins(screen, center_x, center_y, (150, 10, 30))
         self._draw_explosion_effect(screen, center_x, center_y)
     
     def _draw_miss_missile(self, screen, center_x, center_y, color):
         """Dibuja misil de fallo con salpicadura de agua."""
-        # Cuerpo principal del misil
-        missile_body = pygame.Rect(center_x - HIT_MISSILE_BODY_OFFSET_X, center_y - HIT_MISSILE_BODY_OFFSET_Y, 
-                                 HIT_MISSILE_BODY_WIDTH, HIT_MISSILE_BODY_HEIGHT)
-        pygame.draw.ellipse(screen, color, missile_body)
-        
-        self._draw_missile_tip(screen, center_x, center_y, HIT_MISSILE_TIP_OFFSET, HIT_MISSILE_TIP_WIDTH, (200, 200, 200))
-        self._draw_missile_fins(screen, center_x, center_y, HIT_MISSILE_BODY_OFFSET_X, (180, 180, 180))
+        self._draw_missile_body(screen, center_x, center_y, color)
+        self._draw_missile_tip(screen, center_x, center_y, (200, 200, 200))
+        self._draw_missile_fins(screen, center_x, center_y, (180, 180, 180))
         self._draw_splash_effect(screen, center_x, center_y)
     
-    def _draw_missile_tip(self, screen, center_x, center_y, tip_offset, tip_width, tip_color):
+    def _draw_missile_body(self, screen, center_x, center_y, color):
+        """Dibuja el cuerpo principal del misil."""
+        missile_body = pygame.Rect(center_x - MISSILE_BODY_OFFSET_X, center_y - MISSILE_BODY_OFFSET_Y, 
+                                 MISSILE_BODY_WIDTH, MISSILE_BODY_HEIGHT)
+        pygame.draw.ellipse(screen, color, missile_body)
+    
+    def _draw_missile_tip(self, screen, center_x, center_y, tip_color):
         """Dibuja la punta del misil."""
         points = [
-            (center_x, center_y - tip_offset),
-            (center_x - tip_width, center_y - MISSILE_TIP_HEIGHT),
-            (center_x + tip_width, center_y - MISSILE_TIP_HEIGHT)
+            (center_x, center_y - MISSILE_TIP_OFFSET),
+            (center_x - MISSILE_TIP_WIDTH, center_y - MISSILE_TIP_HEIGHT),
+            (center_x + MISSILE_TIP_WIDTH, center_y - MISSILE_TIP_HEIGHT)
         ]
         pygame.draw.polygon(screen, tip_color, points)
     
-    def _draw_missile_fins(self, screen, center_x, center_y, body_offset, fin_color):
+    def _draw_missile_fins(self, screen, center_x, center_y, fin_color):
         """Dibuja las aletas del misil."""
         # Aleta izquierda
         pygame.draw.polygon(screen, fin_color, [
-            (center_x - body_offset, center_y + MISSILE_TIP_HEIGHT),
+            (center_x - MISSILE_BODY_OFFSET_X, center_y + MISSILE_TIP_HEIGHT),
             (center_x - MISSILE_FIN_OFFSET, center_y + MISSILE_FIN_OFFSET),
-            (center_x - MISSILE_FIN_WIDTH, center_y + HIT_MISSILE_BODY_OFFSET_Y)
+            (center_x - MISSILE_FIN_WIDTH, center_y + MISSILE_BODY_OFFSET_Y)
         ])
         # Aleta derecha
         pygame.draw.polygon(screen, fin_color, [
-            (center_x + body_offset, center_y + MISSILE_TIP_HEIGHT),
+            (center_x + MISSILE_BODY_OFFSET_X, center_y + MISSILE_TIP_HEIGHT),
             (center_x + MISSILE_FIN_OFFSET, center_y + MISSILE_FIN_OFFSET),
-            (center_x + MISSILE_FIN_WIDTH, center_y + HIT_MISSILE_BODY_OFFSET_Y)
+            (center_x + MISSILE_FIN_WIDTH, center_y + MISSILE_BODY_OFFSET_Y)
         ])
     
     def _draw_explosion_effect(self, screen, center_x, center_y):
         """Dibuja efecto de explosión/fuego."""
         for i, explosion_color in enumerate(EXPLOSION_COLORS[:3]):
-            explosion_radius = HIT_MISSILE_BODY_OFFSET_X - i * EXPLOSION_RADIUS_REDUCTION
+            explosion_radius = MISSILE_BODY_OFFSET_X - i * EXPLOSION_RADIUS_REDUCTION
             pygame.draw.circle(screen, explosion_color, 
                              (center_x, center_y + EXPLOSION_EFFECT_OFFSET), explosion_radius)
     
@@ -241,7 +239,6 @@ class GameBoard:
         start_x, start_y, ship_width, ship_height = ship_bounds
         
         self._draw_ship_hull(screen, ship, start_x, start_y, ship_width, ship_height)
-        self._draw_ship_hits(screen, ship)
     
     def _calculate_ship_bounds(self, ship):
         """Calcula los límites del barco para el dibujo."""
@@ -302,18 +299,6 @@ class GameBoard:
         deck_rect = pygame.Rect(start_x + SHIP_DECK_OFFSET_Y, start_y + SHIP_DECK_MARGIN, 
                                width - SHIP_DECK_HEIGHT_REDUCTION, height - SHIP_DECK_WIDTH_REDUCTION)
         pygame.draw.ellipse(screen, SHIP_DECK_COLOR, deck_rect)
-    
-    def _draw_ship_hits(self, screen, ship):
-        """Dibuja los impactos de bala en el barco."""
-        for pos_x, pos_y in ship.positions:
-            if (pos_x, pos_y) in ship.hits:
-                hit_x = self.x + pos_x * self.cell_size + self.cell_size // BOARD_DIVISION_FACTOR
-                hit_y = self.y + pos_y * self.cell_size + self.cell_size // BOARD_DIVISION_FACTOR
-                
-                # Efecto de explosión dramático
-                for i, color in enumerate(EXPLOSION_COLORS):
-                    radius = EXPLOSION_BASE_RADIUS - i * EXPLOSION_RADIUS_STEP
-                    pygame.draw.circle(screen, color, (hit_x, hit_y), radius)
     
     def draw_ship_superstructure(self, screen, ship, start_x, start_y, width, height, horizontal):
         """Dibuja la superestructura específica según el tipo de barco."""
