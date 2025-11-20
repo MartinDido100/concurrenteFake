@@ -6,8 +6,8 @@ import pygame
 import sys
 import os
 
-# Agregar el directorio padre al path para importar constants
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Agregar el directorio actual al path para importar constants del cliente
+sys.path.append(os.path.dirname(__file__))
 
 from classes import BattleshipClient
 from constants import *

@@ -1,216 +1,566 @@
-"""
-Pantalla principal del juego de Batalla Naval
-Maneja la colocación de barcos y la fase de batalla
+"""Módulo de la pantalla principal del juego de Batalla Naval.
+
+Este módulo contiene la implementación de GameScreen que maneja
+la colocación de barcos, la fase de batalla, y toda la lógica
+de la interfaz principal del juego.
 """
 
 import pygame
 import os
 import sys
+from typing import Optional, Dict, Any, List, Tuple
 
 # Importar constants y GameBoard desde las ubicaciones correctas
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
-from constants import *
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from constants import (SHIP_SIZES, FONT_SIZE_NORMAL, FONT_SIZE_TITLE, FONT_SIZE_BOARD_TITLE, COLOR_WHITE, GAME_TITLE_SPACE, GAME_BOARD_TITLE_SPACE,
+                      GAME_INFO_SPACE, GAME_SCREEN_MARGIN, GAME_BOARD_SPACING, GAME_BOARD_SIZE_REDUCTION_FACTOR,
+                      GAME_SCREEN_DIVISION_FACTOR, GAME_PHASE_PLACEMENT, GAME_PHASE_WAITING_BATTLE,
+                      GAME_PHASE_BATTLE, DEFAULT_SHIP_SIZE, SHIP_HORIZONTAL_DEFAULT, INITIAL_SHIP_INDEX,
+                      PANEL_PADDING, COORD_SPACE, TITLE_SPACING, GAME_PANEL_ALPHA, MY_PANEL_COLOR,
+                      ENEMY_PANEL_COLOR, PANEL_BORDER_WIDTH, INFO_PANEL_HEIGHT, INFO_PANEL_MARGIN,
+                      INFO_PANEL_SIDE_MARGIN, INFO_PANEL_ALPHA, INFO_PANEL_COLOR, SHIPS_PANEL_WIDTH,
+                      SHIPS_PANEL_HEIGHT, SHIPS_PANEL_X_MARGIN, SHIPS_PANEL_Y_OFFSET, SHIPS_PANEL_ALPHA,
+                      MY_SHIPS_PANEL_COLOR, ENEMY_SHIPS_PANEL_COLOR, SHIPS_PANEL_BORDER_WIDTH,
+                      OCEAN_COLOR_TOP, OCEAN_COLOR_BOTTOM, SHIP_PREVIEW_ALPHA, SHIP_PREVIEW_COLOR_VALID,
+                      SHIP_PREVIEW_COLOR_INVALID, MOUSE_LEFT_BUTTON, MOUSE_RIGHT_BUTTON, KEY_ROTATE,
+                      MISSILE_SOUND_VOLUME, WATER_SPLASH_VOLUME, GAME_TEXT, SOUND_PATHS,
+                      SHIP_STATUS_COLORS, GAME_FONT_SIZES, EXPECTED_ENEMY_SHIPS, SHOT_RESULTS)
 from .game_board import GameBoard
 
 class GameScreen:
-    def __init__(self, screen, network_manager=None):
+    """Pantalla principal del juego de Batalla Naval.
+    
+    Esta clase maneja toda la lógica de la pantalla principal del juego,
+    incluyendo la colocación de barcos, la fase de batalla, el manejo de
+    eventos, el renderizado de tableros y la gestión de estado del juego.
+    
+    Attributes:
+        screen (pygame.Surface): Superficie de pantalla principal.
+        width (int): Ancho de la pantalla.
+        height (int): Alto de la pantalla.
+        network_manager (Optional): Gestor de red para comunicación.
+        my_board (GameBoard): Tablero del jugador.
+        enemy_board (GameBoard): Tablero del enemigo.
+        game_phase (str): Fase actual del juego.
+        selected_ship_size (int): Tamaño del barco seleccionado.
+        ship_horizontal (bool): Orientación del barco.
+        my_turn (bool): Indicador de turno del jugador.
+        ships_to_place (List[int]): Lista de barcos por colocar.
+        current_ship_index (int): Índice del barco actual.
+        enemy_sunk_ships (List[str]): Lista de barcos enemigos hundidos.
+        enemy_sunk_ships_info (Dict): Información de barcos enemigos hundidos.
+        font (pygame.font.Font): Fuente para texto.
+    """
+    def __init__(self, screen: pygame.Surface, network_manager: Optional[Any] = None) -> None:
+        """Inicializar la pantalla de juego.
+        
+        Args:
+            screen (pygame.Surface): Superficie de pantalla principal.
+            network_manager (Optional[Any]): Gestor de red para comunicación.
+        """
+        self._initialize_screen_properties(screen, network_manager)
+        self._calculate_board_dimensions()
+        self._setup_game_boards()
+        self._initialize_game_state()
+        self._initialize_ship_tracking()
+        self._setup_fonts()
+        print(GAME_TEXT['REALISTIC_SHIPS_INIT'])
+        
+    def _initialize_screen_properties(self, screen: pygame.Surface, network_manager: Optional[Any]) -> None:
+        """Inicializar propiedades básicas de la pantalla.
+        
+        Args:
+            screen (pygame.Surface): Superficie de pantalla principal.
+            network_manager (Optional[Any]): Gestor de red.
+        """
         self.screen = screen
         self.width = screen.get_width()
         self.height = screen.get_height()
         self.network_manager = network_manager
         
-        # Calcular tamaño para los tableros
-        title_space = 80   # Espacio para título principal arriba
-        board_title_space = 60  # Más espacio para títulos fuera de paneles
-        info_space = 150   # Espacio para información abajo
-        available_height = self.height - title_space - board_title_space - info_space
-        available_width = self.width - 160  # Más margen para coordenadas
+    def _calculate_board_dimensions(self) -> None:
+        """Calcular dimensiones y posiciones de los tableros."""
+        available_height = self.height - GAME_TITLE_SPACE - GAME_BOARD_TITLE_SPACE - GAME_INFO_SPACE
+        available_width = self.width - GAME_SCREEN_MARGIN
         
-        # Separar mucho más los tableros para que no se toquen
-        board_spacing = 150  # Separación mucho mayor
-        max_board_width = (available_width - board_spacing) // 2
+        max_board_width = (available_width - GAME_BOARD_SPACING) // GAME_SCREEN_DIVISION_FACTOR
         max_board_height = available_height
         
-        # Reducir el tamaño un 20% para dar más espacio de separación
-        board_size = int(min(max_board_width, max_board_height) * 0.8)
+        self.board_size = int(min(max_board_width, max_board_height) * GAME_BOARD_SIZE_REDUCTION_FACTOR)
+        self.start_x = self._calculate_board_start_x()
+        self.board_y = self._calculate_board_y()
         
-        # Centrar los tableros horizontalmente y verticalmente
-        total_width = board_size * 2 + board_spacing
-        start_x = (self.width - total_width) // 2
+    def _calculate_board_start_x(self) -> int:
+        """Calcular posición X inicial de los tableros.
         
-        # Centrar verticalmente considerando todos los espacios
-        total_board_area = board_size + board_title_space  # Tablero + espacio para su título
-        available_vertical = self.height - title_space - info_space
-        board_y = title_space + (available_vertical - total_board_area) // 2 + board_title_space
+        Returns:
+            int: Posición X inicial.
+        """
+        total_width = self.board_size * GAME_SCREEN_DIVISION_FACTOR + GAME_BOARD_SPACING
+        return (self.width - total_width) // GAME_SCREEN_DIVISION_FACTOR
         
-        self.my_board = GameBoard(start_x, board_y, board_size)
-        self.enemy_board = GameBoard(start_x + board_size + board_spacing, board_y, board_size)
+    def _calculate_board_y(self) -> int:
+        """Calcular posición Y de los tableros.
         
-        self.game_phase = "placement"
-        self.selected_ship_size = 2
-        self.ship_horizontal = True
+        Returns:
+            int: Posición Y de los tableros.
+        """
+        total_board_area = self.board_size + GAME_BOARD_TITLE_SPACE
+        available_vertical = self.height - GAME_TITLE_SPACE - GAME_INFO_SPACE
+        return GAME_TITLE_SPACE + (available_vertical - total_board_area) // GAME_SCREEN_DIVISION_FACTOR + GAME_BOARD_TITLE_SPACE
+        
+    def _setup_game_boards(self) -> None:
+        """Configurar los tableros de juego."""
+        self.my_board = GameBoard(self.start_x, self.board_y, self.board_size)
+        enemy_board_x = self.start_x + self.board_size + GAME_BOARD_SPACING
+        self.enemy_board = GameBoard(enemy_board_x, self.board_y, self.board_size)
+        
+    def _initialize_game_state(self) -> None:
+        """Inicializar estado del juego."""
+        self.game_phase = GAME_PHASE_PLACEMENT
+        self.selected_ship_size = DEFAULT_SHIP_SIZE
+        self.ship_horizontal = SHIP_HORIZONTAL_DEFAULT
         self.my_turn = False
-        
         self.ships_to_place = SHIP_SIZES.copy()
-        self.current_ship_index = 0
+        self.current_ship_index = INITIAL_SHIP_INDEX
         
-        # Seguimiento de barcos enemigos hundidos
-        self.enemy_sunk_ships = []
-        self.enemy_sunk_ships_info = {}  # Diccionario para almacenar info completa de barcos hundidos
+    def _initialize_ship_tracking(self) -> None:
+        """Inicializar seguimiento de barcos enemigos."""
+        self.enemy_sunk_ships: List[str] = []
+        self.enemy_sunk_ships_info: Dict[Tuple[int, int], str] = {}
         
+    def _setup_fonts(self) -> None:
+        """Configurar fuentes del juego."""
         self.font = pygame.font.Font(None, FONT_SIZE_NORMAL)
-        
-        print("✅ Sistema de barcos realistas inicializado")
     
-    def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+    def handle_event(self, event: pygame.event.Event) -> None:
+        """Manejar eventos de la pantalla de juego.
+        
+        Args:
+            event (pygame.event.Event): Evento de pygame.
+        """
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self._handle_mouse_event(event)
+        elif event.type == pygame.KEYDOWN:
+            self._handle_keyboard_event(event)
+            
+    def _handle_mouse_event(self, event: pygame.event.Event) -> None:
+        """Manejar eventos de ratón.
+        
+        Args:
+            event (pygame.event.Event): Evento de ratón.
+        """
+        if event.button == MOUSE_LEFT_BUTTON:
             self.handle_left_click(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+        elif event.button == MOUSE_RIGHT_BUTTON:
             self.handle_right_click(event.pos)
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            
+    def _handle_keyboard_event(self, event: pygame.event.Event) -> None:
+        """Manejar eventos de teclado.
+        
+        Args:
+            event (pygame.event.Event): Evento de teclado.
+        """
+        if event.key == KEY_ROTATE:
             self.ship_horizontal = not self.ship_horizontal
     
-    def handle_left_click(self, mouse_pos):
-        if self.game_phase == "placement" and self.current_ship_index < len(self.ships_to_place):
-            cell = self.my_board.get_cell_from_mouse(mouse_pos)
-            if cell:
-                ship_size = self.ships_to_place[self.current_ship_index]
-                if self.my_board.place_ship(ship_size, cell[0], cell[1], self.ship_horizontal):
-                    self.current_ship_index += 1
-                    if self.current_ship_index >= len(self.ships_to_place):
-                        self.game_phase = "waiting_for_battle"
-                        self.send_ships_to_server()
+    def handle_left_click(self, mouse_pos: Tuple[int, int]) -> None:
+        """Manejar clic izquierdo del ratón.
         
-        elif self.game_phase == "battle" and self.my_turn:
-            cell = self.enemy_board.get_cell_from_mouse(mouse_pos)
-            if cell and cell not in self.enemy_board.shots and self.network_manager:
-                self.network_manager.make_shot(cell[0], cell[1])
+        Args:
+            mouse_pos (Tuple[int, int]): Posición del ratón.
+        """
+        if self._is_placement_phase():
+            self._handle_ship_placement(mouse_pos)
+        elif self._is_battle_phase_my_turn():
+            self._handle_battle_shot(mouse_pos)
+            
+    def _is_placement_phase(self) -> bool:
+        """Verificar si estamos en fase de colocación.
+        
+        Returns:
+            bool: True si estamos colocando barcos.
+        """
+        return (self.game_phase == GAME_PHASE_PLACEMENT and 
+               self.current_ship_index < len(self.ships_to_place))
+               
+    def _is_battle_phase_my_turn(self) -> bool:
+        """Verificar si es mi turno en fase de batalla.
+        
+        Returns:
+            bool: True si es mi turno en batalla.
+        """
+        return self.game_phase == GAME_PHASE_BATTLE and self.my_turn
+        
+    def _handle_ship_placement(self, mouse_pos: Tuple[int, int]) -> None:
+        """Manejar colocación de barcos.
+        
+        Args:
+            mouse_pos (Tuple[int, int]): Posición del ratón.
+        """
+        cell = self.my_board.get_cell_from_mouse(mouse_pos)
+        if cell:
+            ship_size = self.ships_to_place[self.current_ship_index]
+            if self.my_board.place_ship(ship_size, cell[0], cell[1], self.ship_horizontal):
+                self._advance_ship_placement()
+                
+    def _advance_ship_placement(self) -> None:
+        """Avanzar al siguiente barco en colocación."""
+        self.current_ship_index += 1
+        if self.current_ship_index >= len(self.ships_to_place):
+            self.game_phase = GAME_PHASE_WAITING_BATTLE
+            self.send_ships_to_server()
+            
+    def _handle_battle_shot(self, mouse_pos: Tuple[int, int]) -> None:
+        """Manejar disparo en fase de batalla.
+        
+        Args:
+            mouse_pos (Tuple[int, int]): Posición del ratón.
+        """
+        cell = self.enemy_board.get_cell_from_mouse(mouse_pos)
+        if self._can_shoot_at_cell(cell):
+            self.network_manager.make_shot(cell[0], cell[1])
+            
+    def _can_shoot_at_cell(self, cell: Optional[Tuple[int, int]]) -> bool:
+        """Verificar si se puede disparar a una celda.
+        
+        Args:
+            cell (Optional[Tuple[int, int]]): Celda objetivo.
+            
+        Returns:
+            bool: True si se puede disparar.
+        """
+        return (cell is not None and 
+               cell not in self.enemy_board.shots and 
+               self.network_manager is not None)
     
-    def handle_right_click(self, mouse_pos):
+    def handle_right_click(self, mouse_pos: Tuple[int, int]) -> None:
+        """Manejar clic derecho del ratón.
+        
+        Args:
+            mouse_pos (Tuple[int, int]): Posición del ratón.
+        """
         self.ship_horizontal = not self.ship_horizontal
     
-    def update(self):
+    def update(self) -> None:
+        """Actualizar estado de la pantalla de juego."""
         pass
     
-    def draw(self):
+    def draw(self) -> None:
+        """Dibujar toda la pantalla de juego."""
         self.draw_ocean_background()
-        
         self.draw_board_panels()
+        self._draw_game_title()
+        self._draw_board_titles()
+        self._draw_game_boards()
+        self._draw_ship_preview_if_needed()
+        self._draw_game_info()
         
-        title_font = pygame.font.Font(None, FONT_SIZE_TITLE)
-        title_text = title_font.render("BATALLA NAVAL", True, COLOR_WHITE)
-        title_rect = title_text.get_rect(center=(self.width // 2, 35))
+    def _draw_game_title(self) -> None:
+        """Dibujar título principal del juego."""
+        title_font = pygame.font.Font(None, GAME_FONT_SIZES['TITLE'])
+        title_text = title_font.render(GAME_TEXT['TITLE'], True, COLOR_WHITE)
+        title_rect = title_text.get_rect(center=(self.width // GAME_SCREEN_DIVISION_FACTOR, 35))
         self.screen.blit(title_text, title_rect)
         
-        board_font = pygame.font.Font(None, FONT_SIZE_BOARD_TITLE)
+    def _draw_board_titles(self) -> None:
+        """Dibujar títulos de los tableros."""
+        board_font = pygame.font.Font(None, GAME_FONT_SIZES['BOARD_TITLE'])
+        title_y = self._calculate_board_title_y()
         
-        # Posicionar títulos fuera del recuadro, con espacio de separación
-        title_spacing = 15  # Espacio entre título y panel del tablero
+        self._draw_my_board_title(board_font, title_y)
+        self._draw_enemy_board_title(board_font, title_y)
         
-        my_title = board_font.render("MI FLOTA", True, (255, 255, 255))
-        my_panel_top = self.my_board.y - 40 - 15  # panel_padding + coord_space desde draw_board_panels
-        my_title_rect = my_title.get_rect(center=(self.my_board.x + self.my_board.width // 2, my_panel_top - title_spacing))
+    def _calculate_board_title_y(self) -> int:
+        """Calcular posición Y de los títulos de tableros.
+        
+        Returns:
+            int: Posición Y de los títulos.
+        """
+        panel_top = self.my_board.y - PANEL_PADDING - COORD_SPACE
+        return panel_top - TITLE_SPACING
+        
+    def _draw_my_board_title(self, board_font: pygame.font.Font, title_y: int) -> None:
+        """Dibujar título de mi tablero.
+        
+        Args:
+            board_font (pygame.font.Font): Fuente para el título.
+            title_y (int): Posición Y del título.
+        """
+        my_title = board_font.render(GAME_TEXT['MY_FLEET'], True, SHIP_STATUS_COLORS['WHITE'])
+        center_x = self.my_board.x + self.my_board.width // GAME_SCREEN_DIVISION_FACTOR
+        my_title_rect = my_title.get_rect(center=(center_x, title_y))
         self.screen.blit(my_title, my_title_rect)
         
-        enemy_title = board_font.render("ENEMIGO", True, (255, 255, 255))
-        enemy_panel_top = self.enemy_board.y - 40 - 15  # panel_padding + coord_space desde draw_board_panels
-        enemy_title_rect = enemy_title.get_rect(center=(self.enemy_board.x + self.enemy_board.width // 2, enemy_panel_top - title_spacing))
+    def _draw_enemy_board_title(self, board_font: pygame.font.Font, title_y: int) -> None:
+        """Dibujar título del tablero enemigo.
+        
+        Args:
+            board_font (pygame.font.Font): Fuente para el título.
+            title_y (int): Posición Y del título.
+        """
+        enemy_title = board_font.render(GAME_TEXT['ENEMY'], True, SHIP_STATUS_COLORS['WHITE'])
+        center_x = self.enemy_board.x + self.enemy_board.width // GAME_SCREEN_DIVISION_FACTOR
+        enemy_title_rect = enemy_title.get_rect(center=(center_x, title_y))
         self.screen.blit(enemy_title, enemy_title_rect)
         
+    def _draw_game_boards(self) -> None:
+        """Dibujar tableros de juego."""
         self.my_board.draw(self.screen, show_ships=True)
         self.draw_enemy_board_with_sunk_ships()
         
-        # Dibujar estado de los barcos si estamos en batalla
-        if self.game_phase == "battle" or self.game_phase == "waiting_for_battle":
+        if self._should_show_ships_status():
             self.draw_ships_status()
+            
+    def _should_show_ships_status(self) -> bool:
+        """Verificar si se debe mostrar el estado de los barcos.
         
-        if self.game_phase == "placement" and self.current_ship_index < len(self.ships_to_place):
+        Returns:
+            bool: True si se debe mostrar el estado.
+        """
+        return (self.game_phase == GAME_PHASE_BATTLE or 
+               self.game_phase == GAME_PHASE_WAITING_BATTLE)
+               
+    def _draw_ship_preview_if_needed(self) -> None:
+        """Dibujar vista previa del barco si es necesario."""
+        if self._should_show_ship_preview():
             mouse_pos = pygame.mouse.get_pos()
             cell = self.my_board.get_cell_from_mouse(mouse_pos)
             if cell:
                 self.draw_ship_preview_realistic(cell[0], cell[1])
+                
+    def _should_show_ship_preview(self) -> bool:
+        """Verificar si se debe mostrar la vista previa del barco.
         
+        Returns:
+            bool: True si se debe mostrar vista previa.
+        """
+        return (self.game_phase == GAME_PHASE_PLACEMENT and 
+               self.current_ship_index < len(self.ships_to_place))
+        return panel_top - TITLE_SPACING
+        
+    def _draw_my_board_title(self, board_font: pygame.font.Font, title_y: int) -> None:
+        """Dibujar título de mi tablero.
+        
+        Args:
+            board_font (pygame.font.Font): Fuente para el título.
+            title_y (int): Posición Y del título.
+        """
+        my_title = board_font.render(GAME_TEXT['MY_FLEET'], True, SHIP_STATUS_COLORS['WHITE'])
+        center_x = self.my_board.x + self.my_board.width // GAME_SCREEN_DIVISION_FACTOR
+        my_title_rect = my_title.get_rect(center=(center_x, title_y))
+        self.screen.blit(my_title, my_title_rect)
+        
+    def _draw_enemy_board_title(self, board_font: pygame.font.Font, title_y: int) -> None:
+        """Dibujar título del tablero enemigo.
+        
+        Args:
+            board_font (pygame.font.Font): Fuente para el título.
+            title_y (int): Posición Y del título.
+        """
+        enemy_title = board_font.render(GAME_TEXT['ENEMY'], True, SHIP_STATUS_COLORS['WHITE'])
+        center_x = self.enemy_board.x + self.enemy_board.width // GAME_SCREEN_DIVISION_FACTOR
+        enemy_title_rect = enemy_title.get_rect(center=(center_x, title_y))
+        self.screen.blit(enemy_title, enemy_title_rect)
+        
+    def _draw_game_boards(self) -> None:
+        """Dibujar tableros de juego."""
+        self.my_board.draw(self.screen, show_ships=True)
+        self.draw_enemy_board_with_sunk_ships()
+        
+        if self._should_show_ships_status():
+            self.draw_ships_status()
+            
+    def _should_show_ships_status(self) -> bool:
+        """Verificar si se debe mostrar el estado de los barcos.
+        
+        Returns:
+            bool: True si se debe mostrar el estado.
+        """
+        return (self.game_phase == GAME_PHASE_BATTLE or 
+               self.game_phase == GAME_PHASE_WAITING_BATTLE)
+               
+    def _draw_ship_preview_if_needed(self) -> None:
+        """Dibujar vista previa del barco si es necesario."""
+        if self._should_show_ship_preview():
+            mouse_pos = pygame.mouse.get_pos()
+            cell = self.my_board.get_cell_from_mouse(mouse_pos)
+            if cell:
+                self.draw_ship_preview_realistic(cell[0], cell[1])
+                
+    def _should_show_ship_preview(self) -> bool:
+        """Verificar si se debe mostrar la vista previa del barco.
+        
+        Returns:
+            bool: True si se debe mostrar vista previa.
+        """
+        return (self.game_phase == GAME_PHASE_PLACEMENT and 
+               self.current_ship_index < len(self.ships_to_place))
+               
+    def _draw_game_info(self) -> None:
+        """Dibujar información del juego."""
         self.draw_info_panel()
+        self._draw_status_text()
+        self._draw_additional_info()
         
-        # Fuentes más grandes para mejor legibilidad
-        main_info_font = pygame.font.Font(None, 32)
-        secondary_info_font = pygame.font.Font(None, 28)
+    def _draw_status_text(self) -> None:
+        """Dibujar texto de estado principal."""
+        status_text = self._get_status_text()
+        main_info_font = pygame.font.Font(None, GAME_FONT_SIZES['MAIN_INFO'])
         
-        if self.game_phase == "placement":
-            if self.current_ship_index < len(self.ships_to_place):
-                ship_size = self.ships_to_place[self.current_ship_index]
-                orientation = "Horizontal" if self.ship_horizontal else "Vertical"
-                status_text = f"Colocando barco de tamaño {ship_size} ({orientation}) - Click derecho o R para rotar"
-            else:
-                status_text = "Todos los barcos colocados - Esperando al oponente..."
-        elif self.game_phase == "battle":
-            if self.my_turn:
-                status_text = "¡Tu turno! Haz click en el tablero enemigo para disparar"
-            else:
-                status_text = "Turno del oponente - Espera tu turno..."
-        elif self.game_phase == "waiting_for_battle":
-            status_text = "Barcos colocados - Esperando que inicie la batalla..."
-        else:
-            status_text = "Preparando juego..."
-        
-        # Texto principal centrado en el panel
-        status_surface = main_info_font.render(status_text, True, (255, 255, 255))
-        status_rect = status_surface.get_rect(center=(self.width // 2, self.height - 75))
+        status_surface = main_info_font.render(status_text, True, SHIP_STATUS_COLORS['WHITE'])
+        center_x = self.width // GAME_SCREEN_DIVISION_FACTOR
+        status_rect = status_surface.get_rect(center=(center_x, self.height - 75))
         self.screen.blit(status_surface, status_rect)
         
-        # Información adicional
-        if self.game_phase == "placement":
+    def _get_status_text(self) -> str:
+        """Obtener texto de estado actual.
+        
+        Returns:
+            str: Texto de estado del juego.
+        """
+        if self.game_phase == GAME_PHASE_PLACEMENT:
+            return self._get_placement_status_text()
+        elif self.game_phase == GAME_PHASE_BATTLE:
+            return self._get_battle_status_text()
+        elif self.game_phase == GAME_PHASE_WAITING_BATTLE:
+            return GAME_TEXT['WAITING_BATTLE']
+        else:
+            return GAME_TEXT['PREPARING']
+            
+    def _get_placement_status_text(self) -> str:
+        """Obtener texto de estado para fase de colocación.
+        
+        Returns:
+            str: Texto de estado de colocación.
+        """
+        if self.current_ship_index < len(self.ships_to_place):
+            ship_size = self.ships_to_place[self.current_ship_index]
+            orientation = GAME_TEXT['HORIZONTAL'] if self.ship_horizontal else GAME_TEXT['VERTICAL']
+            return GAME_TEXT['PLACING_SHIP'].format(ship_size, orientation)
+        else:
+            return GAME_TEXT['ALL_SHIPS_PLACED']
+            
+    def _get_battle_status_text(self) -> str:
+        """Obtener texto de estado para fase de batalla.
+        
+        Returns:
+            str: Texto de estado de batalla.
+        """
+        if self.my_turn:
+            return GAME_TEXT['YOUR_TURN']
+        else:
+            return GAME_TEXT['OPPONENT_TURN']
+            
+    def _draw_additional_info(self) -> None:
+        """Dibujar información adicional del juego."""
+        if self.game_phase == GAME_PHASE_PLACEMENT:
             remaining_ships = self.ships_to_place[self.current_ship_index:]
             if remaining_ships:
-                ships_text = f"Barcos restantes: {remaining_ships}"
-                ships_surface = secondary_info_font.render(ships_text, True, (200, 220, 255))
-                ships_rect = ships_surface.get_rect(center=(self.width // 2, self.height - 45))
-                self.screen.blit(ships_surface, ships_rect)
+                self._draw_remaining_ships_info(remaining_ships)
+                
+    def _draw_remaining_ships_info(self, remaining_ships: List[int]) -> None:
+        """Dibujar información de barcos restantes.
+        
+        Args:
+            remaining_ships (List[int]): Lista de barcos restantes.
+        """
+        ships_text = GAME_TEXT['REMAINING_SHIPS'].format(remaining_ships)
+        secondary_info_font = pygame.font.Font(None, GAME_FONT_SIZES['SECONDARY_INFO'])
+        
+        ships_surface = secondary_info_font.render(ships_text, True, SHIP_STATUS_COLORS['LIGHT_BLUE'])
+        center_x = self.width // GAME_SCREEN_DIVISION_FACTOR
+        ships_rect = ships_surface.get_rect(center=(center_x, self.height - 45))
+        self.screen.blit(ships_surface, ships_rect)
 
     
-    def draw_ocean_background(self):
+    def draw_ocean_background(self) -> None:
+        """Dibujar fondo oceánico con gradiente."""
         for y in range(self.height):
             ratio = y / self.height
-            r = int(30 + (70 - 30) * ratio)
-            g = int(60 + (130 - 60) * ratio)  
-            b = int(90 + (200 - 90) * ratio)
-            color = (r, g, b)
+            color = self._calculate_ocean_color(ratio)
             pygame.draw.line(self.screen, color, (0, y), (self.width, y))
+            
+    def _calculate_ocean_color(self, ratio: float) -> Tuple[int, int, int]:
+        """Calcular color del océano para gradiente.
+        
+        Args:
+            ratio (float): Ratio de posición vertical (0-1).
+            
+        Returns:
+            Tuple[int, int, int]: Color RGB calculado.
+        """
+        r = int(OCEAN_COLOR_TOP['r'] + (OCEAN_COLOR_BOTTOM['r'] - OCEAN_COLOR_TOP['r']) * ratio)
+        g = int(OCEAN_COLOR_TOP['g'] + (OCEAN_COLOR_BOTTOM['g'] - OCEAN_COLOR_TOP['g']) * ratio)
+        b = int(OCEAN_COLOR_TOP['b'] + (OCEAN_COLOR_BOTTOM['b'] - OCEAN_COLOR_TOP['b']) * ratio)
+        return (r, g, b)
     
-    def draw_board_panels(self):
-        panel_padding = 15
-        panel_color = (0, 0, 0, 100)
-        border_color = (255, 255, 255, 150)
+    def draw_board_panels(self) -> None:
+        """Dibujar paneles de fondo para los tableros."""
+        self._draw_my_board_panel()
+        self._draw_enemy_board_panel()
+        self._draw_panel_borders()
         
-        coord_space = 40  # Espacio para las coordenadas
+    def _draw_my_board_panel(self) -> None:
+        """Dibujar panel de fondo para mi tablero."""
+        my_panel_rect = self._calculate_my_panel_rect()
+        my_panel_surface = self._create_panel_surface(my_panel_rect, MY_PANEL_COLOR)
+        self.screen.blit(my_panel_surface, (my_panel_rect.x, my_panel_rect.y))
         
-        my_panel = pygame.Rect(
-            self.my_board.x - panel_padding - coord_space,
-            self.my_board.y - panel_padding - coord_space,
-            self.my_board.width + panel_padding * 2 + coord_space * 2,
-            self.my_board.height + panel_padding * 2 + coord_space * 2
+    def _draw_enemy_board_panel(self) -> None:
+        """Dibujar panel de fondo para tablero enemigo."""
+        enemy_panel_rect = self._calculate_enemy_panel_rect()
+        enemy_panel_surface = self._create_panel_surface(enemy_panel_rect, ENEMY_PANEL_COLOR)
+        self.screen.blit(enemy_panel_surface, (enemy_panel_rect.x, enemy_panel_rect.y))
+        
+    def _calculate_my_panel_rect(self) -> pygame.Rect:
+        """Calcular rectángulo del panel de mi tablero.
+        
+        Returns:
+            pygame.Rect: Rectángulo del panel.
+        """
+        return pygame.Rect(
+            self.my_board.x - PANEL_PADDING - COORD_SPACE,
+            self.my_board.y - PANEL_PADDING - COORD_SPACE,
+            self.my_board.width + PANEL_PADDING * 2 + COORD_SPACE * 2,
+            self.my_board.height + PANEL_PADDING * 2 + COORD_SPACE * 2
         )
         
-        enemy_panel = pygame.Rect(
-            self.enemy_board.x - panel_padding - coord_space,
-            self.enemy_board.y - panel_padding - coord_space,
-            self.enemy_board.width + panel_padding * 2 + coord_space * 2,
-            self.enemy_board.height + panel_padding * 2 + coord_space * 2
+    def _calculate_enemy_panel_rect(self) -> pygame.Rect:
+        """Calcular rectángulo del panel del tablero enemigo.
+        
+        Returns:
+            pygame.Rect: Rectángulo del panel enemigo.
+        """
+        return pygame.Rect(
+            self.enemy_board.x - PANEL_PADDING - COORD_SPACE,
+            self.enemy_board.y - PANEL_PADDING - COORD_SPACE,
+            self.enemy_board.width + PANEL_PADDING * 2 + COORD_SPACE * 2,
+            self.enemy_board.height + PANEL_PADDING * 2 + COORD_SPACE * 2
         )
         
-        my_panel_surface = pygame.Surface((my_panel.width, my_panel.height))
-        my_panel_surface.set_alpha(100)
-        my_panel_surface.fill((20, 40, 60))
+    def _create_panel_surface(self, panel_rect: pygame.Rect, color: Tuple[int, int, int]) -> pygame.Surface:
+        """Crear superficie del panel con transparencia.
         
-        enemy_panel_surface = pygame.Surface((enemy_panel.width, enemy_panel.height))
-        enemy_panel_surface.set_alpha(100)
-        enemy_panel_surface.fill((40, 20, 20))
+        Args:
+            panel_rect (pygame.Rect): Rectángulo del panel.
+            color (Tuple[int, int, int]): Color del panel.
+            
+        Returns:
+            pygame.Surface: Superficie del panel.
+        """
+        panel_surface = pygame.Surface((panel_rect.width, panel_rect.height))
+        panel_surface.set_alpha(GAME_PANEL_ALPHA)
+        panel_surface.fill(color)
+        return panel_surface
         
-        self.screen.blit(my_panel_surface, (my_panel.x, my_panel.y))
-        self.screen.blit(enemy_panel_surface, (enemy_panel.x, enemy_panel.y))
+    def _draw_panel_borders(self) -> None:
+        """Dibujar bordes de los paneles."""
+        my_panel_rect = self._calculate_my_panel_rect()
+        enemy_panel_rect = self._calculate_enemy_panel_rect()
         
-        pygame.draw.rect(self.screen, (100, 149, 237), my_panel, 3)
-        pygame.draw.rect(self.screen, (220, 20, 60), enemy_panel, 3)
+        pygame.draw.rect(self.screen, (100, 149, 237), my_panel_rect, PANEL_BORDER_WIDTH)
+        pygame.draw.rect(self.screen, (220, 20, 60), enemy_panel_rect, PANEL_BORDER_WIDTH)
     
     def draw_info_panel(self):
         panel_height = 110

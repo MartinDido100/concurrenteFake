@@ -3,16 +3,10 @@ import logging
 import sys
 import os
 
-# Agregar la carpeta classes al path
-#esto capaz se puede cambiar porque el server lo hosteamos con una vm, entonces
-# no tiene sentido que todo este en el mismo lado
-#preguntar al profe como hacer porque duplicamos la clase barco en server y cliente
-#o lo hacemos como si fuera local o si no nose
-
 sys.path.append(os.path.join(os.path.dirname(__file__), 'classes'))
 
-# Agregar el directorio padre al path para importar constants compartido
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+# Agregar el directorio actual al path para importar constants del servidor
+sys.path.append(os.path.dirname(__file__))
 
 from battleship_server import BattleshipServer
 from constants import *
