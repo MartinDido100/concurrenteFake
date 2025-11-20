@@ -19,6 +19,8 @@ TEXT_VERTICAL_OFFSET = 50
 BUTTON_BORDER_WIDTH = 3
 MOUSE_LEFT_BUTTON = 1
 GAME_OVER_DIVISION_FACTOR = 2
+AUTO_RETURN_TIMEOUT = 5000   # 5 segundos en milisegundos
+COUNTDOWN_Y_OFFSET = 80      # Espacio debajo del botón para mostrar countdown
 
 class GameOverScreen:
     """Pantalla de fin de juego que muestra el resultado de la partida."""
@@ -34,6 +36,10 @@ class GameOverScreen:
         self.width = screen.get_width()
         self.height = screen.get_height()
         self.is_winner = is_winner
+        
+        # Configurar timeout automático
+        self.start_time = pygame.time.get_ticks()
+        self.auto_return = False
         
         self._setup_button()
         self._setup_fonts()
@@ -71,6 +77,8 @@ class GameOverScreen:
         """Configura las fuentes utilizadas en la pantalla."""
         self.font_large = pygame.font.Font(None, FONT_SIZE_LARGE)
         self.font_medium = pygame.font.Font(None, FONT_SIZE_DIALOG_TITLE)
+        self.font_small = pygame.font.Font(None, FONT_SIZE_NORMAL)
+        self.font_countdown = pygame.font.Font(None, FONT_SIZE_DIALOG_TITLE + 5)  # Fuente más grande para countdown
     
     def handle_event(self, event):
         """Maneja los eventos de entrada del usuario.
@@ -79,8 +87,12 @@ class GameOverScreen:
             event: Evento de pygame a procesar
             
         Returns:
-            str o None: 'accept' si se hizo click en el botón, None en caso contrario
+            str o None: 'accept' si se hizo click en el botón o timeout, None en caso contrario
         """
+        # Verificar timeout automático
+        if self._check_auto_timeout():
+            return "accept"
+            
         if self._is_mouse_click_event(event):
             return self._handle_mouse_click()
         return None
@@ -108,11 +120,34 @@ class GameOverScreen:
             return "accept"
         return None
     
+    def _check_auto_timeout(self):
+        """Verifica si ha pasado el tiempo para volver automáticamente al menú.
+        
+        Returns:
+            bool: True si debe volver al menú automáticamente
+        """
+        elapsed_time = pygame.time.get_ticks() - self.start_time
+        if elapsed_time >= AUTO_RETURN_TIMEOUT:
+            self.auto_return = True
+            return True
+        return False
+    
+    def _get_remaining_seconds(self):
+        """Calcula los segundos restantes para el retorno automático.
+        
+        Returns:
+            int: Segundos restantes (mínimo 0)
+        """
+        elapsed_time = pygame.time.get_ticks() - self.start_time
+        remaining_ms = max(0, AUTO_RETURN_TIMEOUT - elapsed_time)
+        return max(0, int(remaining_ms / 1000) + 1)
+    
     def draw(self):
         """Dibuja todos los elementos de la pantalla de game over."""
         self._draw_overlay()
         self._draw_main_text()
         self._draw_button()
+        self._draw_countdown_if_needed()
     
     def _draw_overlay(self):
         """Dibuja el fondo semi-transparente."""
@@ -142,10 +177,7 @@ class GameOverScreen:
         Returns:
             tuple: (texto, color) para mostrar
         """
-        if self.is_winner:
-            return "GANASTE", COLOR_GREEN
-        else:
-            return "PERDISTE", COLOR_RED
+        return ("GANASTE", COLOR_GREEN) if self.is_winner else ("PERDISTE", COLOR_RED)
     
     def _get_text_center_position(self):
         """Calcula la posición centrada del texto principal.
@@ -191,10 +223,9 @@ class GameOverScreen:
             tuple: Color RGB para el botón
         """
         mouse_pos = pygame.mouse.get_pos()
-        if self.accept_button['rect'].collidepoint(mouse_pos):
-            return self.accept_button['hover_color']
-        else:
-            return self.accept_button['color']
+        return (self.accept_button['hover_color'] 
+                if self.accept_button['rect'].collidepoint(mouse_pos) 
+                else self.accept_button['color'])
     
     def _draw_button_text(self):
         """Dibuja el texto del botón centrado."""
@@ -205,3 +236,33 @@ class GameOverScreen:
         )
         button_text_rect = button_text.get_rect(center=self.accept_button['rect'].center)
         self.screen.blit(button_text, button_text_rect)
+    
+    def _draw_countdown_if_needed(self):
+        """Dibuja el mensaje de cuenta regresiva desde el inicio con texto más grande y visible."""
+        elapsed_time = pygame.time.get_ticks() - self.start_time
+        remaining_total_seconds = (AUTO_RETURN_TIMEOUT - elapsed_time) / 1000
+        
+        if remaining_total_seconds > 0:
+            remaining_seconds = self._get_remaining_seconds()
+            countdown_text = f"Volviendo al menú principal en {remaining_seconds} segundos"
+            
+            # Renderiza el texto de countdown con fuente más grande
+            countdown_surface = self.font_countdown.render(countdown_text, True, pygame.Color('orange'))
+            countdown_rect = countdown_surface.get_rect()
+            countdown_rect.centerx = self.width // 2
+            countdown_rect.y = self.accept_button['rect'].bottom + COUNTDOWN_Y_OFFSET
+            
+            # Dibuja fondo más prominente para el texto
+            padding = 15
+            bg_rect = pygame.Rect(countdown_rect.x - padding, countdown_rect.y - padding,
+                                countdown_rect.width + 2*padding, countdown_rect.height + 2*padding)
+            bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+            bg_surface.set_alpha(180)  # Más opaco para mejor visibilidad
+            bg_surface.fill(COLOR_BLACK)
+            self.screen.blit(bg_surface, bg_rect.topleft)
+            
+            # Dibuja borde para mayor visibilidad
+            pygame.draw.rect(self.screen, pygame.Color('orange'), bg_rect, 2)
+            
+            # Dibuja el texto de countdown
+            self.screen.blit(countdown_surface, countdown_rect)

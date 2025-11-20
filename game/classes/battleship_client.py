@@ -138,9 +138,7 @@ class BattleshipClient:
     
     def _handle_system_events(self, event):
         """Manejar eventos del sistema (quit, escape, resize)"""
-        if event.type == pygame.QUIT:
-            self.running = False
-        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             self.running = False
         elif event.type == pygame.VIDEORESIZE:
             self._handle_window_resize(event)
@@ -302,7 +300,7 @@ class BattleshipClient:
     def _handle_game_over_events(self, event):
         """Manejar eventos en pantalla de game over"""
         action = self.game_over_screen.handle_event(event)
-        if action == "accept":
+        if action == "accept" or self.game_over_screen.auto_return:
             self._handle_game_over_accept()
     
     def _handle_game_over_accept(self):
@@ -325,6 +323,10 @@ class BattleshipClient:
     def _restart_menu_music(self):
         """Reiniciar música del menú"""
         self.init_background_music()
+        self._apply_mute_if_needed()
+    
+    def _apply_mute_if_needed(self):
+        """Aplicar silencio si está activado en el menú"""
         if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
             pygame.mixer.music.set_volume(MUTED_VOLUME)
     
@@ -456,11 +458,19 @@ class BattleshipClient:
     
     def _reset_game_state_for_new_game(self):
         """Resetear estado del juego para nueva partida"""
+        self._reset_game_state_safely("Error reseteando pantalla de juego")
+    
+    def _reset_game_state_after_game_over(self):
+        """Resetear estado del juego después de game over"""
+        self._reset_game_state_safely("Error reseteando pantalla tras game over")
+    
+    def _reset_game_state_safely(self, error_msg):
+        """Resetear estado del juego de forma segura con manejo de errores"""
         if hasattr(self, 'game_screen') and self.game_screen is not None:
             try:
                 self.game_screen.reset_game_state()
             except Exception as e:
-                print(f"⚠️ Error reseteando pantalla de juego: {e}")
+                print(f"⚠️ {error_msg}: {e}")
     
     def _change_to_game_state(self):
         """Cambiar al estado de juego"""
@@ -496,14 +506,6 @@ class BattleshipClient:
         """Detener música del juego"""
         pygame.mixer.music.stop()
         print("🔇 Música de juego detenida")
-    
-    def _reset_game_state_after_game_over(self):
-        """Resetear estado del juego después de game over"""
-        if hasattr(self, 'game_screen') and self.game_screen is not None:
-            try:
-                self.game_screen.reset_game_state()
-            except Exception as e:
-                print(f"⚠️ Error reseteando pantalla tras game over: {e}")
     
     def _create_and_show_game_over_screen(self, data):
         """Crear y mostrar pantalla de game over"""
@@ -544,8 +546,7 @@ class BattleshipClient:
     
     def _restore_music_mute_state(self):
         """Restaurar estado de silencio si estaba activado"""
-        if hasattr(self.menu_screen, 'music_muted') and self.menu_screen.music_muted:
-            pygame.mixer.music.set_volume(MUTED_VOLUME)
+        self._apply_mute_if_needed()
     
     def _return_to_menu_after_disconnect(self):
         """Volver al menú principal después de desconexión"""

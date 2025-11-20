@@ -1,11 +1,22 @@
 """
-Constantes para el juego Batalla Naval - CLIENTE
-Archivo de constantes específicas para el cliente que maneja la interfaz de usuario
+Constantes para el juego Batalla Naval
+Archivo para centralizar todos los valores constantes y eliminar números mágicos
 """
 
-# Importación de pygame (requerido por el cliente)
-import pygame
+# Importación condicional de pygame para evitar errores en el servidor
+try:
+    import pygame
+    PYGAME_AVAILABLE = True
+except ImportError:
+    PYGAME_AVAILABLE = False
+    
 import os
+
+# === CONFIGURACIÓN DE RED ===
+DEFAULT_SERVER_HOST = "localhost"
+DEFAULT_SERVER_PORT = 8888
+NETWORK_BUFFER_SIZE = 1024
+NETWORK_TIMEOUT = 1.0
 
 # === CONFIGURACIÓN DE VENTANA Y UI ===
 # Ventana principal
@@ -38,16 +49,8 @@ CELL_SHIP = 1
 CELL_HIT = 2
 CELL_WATER_HIT = 3
 
-# Configuración de orientación de barcos
-SHIP_ORIENTATION_HORIZONTAL = True
-SHIP_ORIENTATION_VERTICAL = False
-SHIP_INITIAL_HITS = 0
-
-# Mensajes de error para barcos
-ERROR_MESSAGES_SHIP = {
-    'EMPTY_POSITIONS': "Las posiciones no pueden estar vacías",
-    'MISSING_INIT_PARAMS': "Debe proporcionar 'size' o 'positions' para inicializar el barco"
-}
+# Máximo de jugadores
+MAX_PLAYERS = 2
 
 # === CONFIGURACIÓN DE UI ===
 # Connection Dialog
@@ -96,7 +99,6 @@ MUSIC_VOLUME_MENU = 0.3
 MUSIC_VOLUME_GAME = 0.2
 MISSILE_SOUND_VOLUME = 0.3
 SPLASH_SOUND_VOLUME = 0.25
-WATER_SPLASH_VOLUME = 0.25  # Alias para SPLASH_SOUND_VOLUME
 MUTED_VOLUME = 0.0
 
 # Configuración del mixer
@@ -106,21 +108,18 @@ MIXER_CHANNELS = 2
 MIXER_BUFFER = 1024
 
 # === CONFIGURACIÓN DE COLORES ===
-# Colores principales del juego (unificados desde Colors.py)
-COLOR_WATER = (100, 149, 237)     # Colors.WATER (azul cielo)
-COLOR_SHIP = (139, 69, 19)        # Colors.SHIP (marrón)
-COLOR_HIT = (255, 0, 0)           # Colors.HIT (rojo puro)
-COLOR_MISS = (255, 255, 255)      # Colors.MISS (blanco)
-COLOR_GRID = (0, 0, 0)            # Colors.GRID (negro)
-COLOR_BACKGROUND = (30, 60, 90)   # Colors.BACKGROUND (azul oscuro)
-
-# Colores adicionales del océano
+# Colores principales (RGB)
 COLOR_OCEAN_START = (30, 60, 90)
 COLOR_OCEAN_END = (70, 130, 200)
+COLOR_WATER = (70, 130, 180)
 COLOR_WATER_DARK = (50, 100, 150)
+COLOR_SHIP = (101, 67, 33)
+COLOR_HIT = (220, 20, 60)
+COLOR_MISS = (255, 255, 255)
+COLOR_GRID = (30, 60, 100)
 COLOR_HOVER = (255, 255, 0, 100)
 
-# Colores de UI básicos
+# Colores de UI
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
 COLOR_GREEN = (0, 255, 0)
@@ -213,6 +212,24 @@ SOUND_BACKGROUND_GAME = "assets/sounds/background.mp3"
 SOUND_MISSILE_HIT = "assets/sounds/misil.mp3"
 SOUND_WATER_SPLASH = "assets/sounds/waterSplash.mp3"
 
+# === CONFIGURACIÓN DE SERVIDOR ===
+# Timeouts y límites
+SERVER_READ_TIMEOUT = 1.0
+SERVER_CLOSE_TIMEOUT = 5
+JSON_DECODE_MAX_RETRIES = 3
+
+# UUID
+UUID_SHORT_LENGTH = 8
+
+# === CONFIGURACIÓN DE MENSAJES ===
+# Límites de caracteres para mensajes
+MESSAGE_TYPE_MAX_LENGTH = 50
+ERROR_MESSAGE_MAX_LENGTH = 200
+PLAYER_ID_LENGTH = 8
+
+# === CONFIGURACIÓN DE LOGGING ===
+LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
+
 # === CONFIGURACIÓN DE POSICIONES DE UI ===
 # Posiciones de menú
 MENU_BUTTON_Y_CONNECT = 400
@@ -226,6 +243,8 @@ GAME_STATUS_Y_OFFSET = 45
 
 # === CONFIGURACIÓN DE VALIDACIÓN ===
 # Límites de entrada
+MIN_PORT_NUMBER = 1
+MAX_PORT_NUMBER = 65535
 MIN_COORDINATE = 0
 MAX_COORDINATE = 9
 
@@ -238,7 +257,97 @@ COORD_FONT_CELL_RATIO = 2  # cell_size // 2
 
 # === CONFIGURACIÓN DE TIEMPO ===
 # Delays y timeouts
+CONNECTION_CHECK_INTERVAL = 1.0
 ANIMATION_FRAME_TIME = 16  # ~60 FPS
+
+# === CONFIGURACIÓN DE DESARROLLO ===
+# Flags de debug
+DEBUG_NETWORK = False
+DEBUG_GAME_STATE = False
+DEBUG_UI = False
+
+# === CONFIGURACIÓN DE SERVIDOR (start_server.py) ===
+# Constantes para eliminación de números mágicos
+BANNER_WIDTH = 80
+FIREWALL_TCP_PROTOCOL = '/tcp'
+DEFAULT_HOST_ALL_INTERFACES = "0.0.0.0"
+DEFAULT_HOST_LOCALHOST = "localhost"
+DEFAULT_HOST_LOOPBACK = "127.0.0.1"
+MAX_METHOD_LINES = 15
+ARG_VALIDATION_EXIT_SUCCESS = 0
+ARG_VALIDATION_EXIT_ERROR = 1
+USER_INPUT_YES = 's'
+USER_INPUT_NO = 'n'
+
+# === CONFIGURACIÓN DE PLAYER ===
+# Constantes para la clase Player
+UTF8_ENCODING = 'utf-8'
+JSON_MESSAGE_DELIMITER = '\n'
+SHOT_RESULT_HIT = 'hit'
+SHOT_RESULT_MISS = 'miss'
+SHOT_RESULT_SUNK = 'sunk'
+
+# === CONFIGURACIÓN DE BATTLESHIP SERVER ===
+# Constantes para la clase BattleshipServer
+DEFAULT_HOST_ALL_INTERFACES = "0.0.0.0"
+LOCALHOST_HOST = "localhost"
+CONNECTION_ERROR_MESSAGES = {
+    'SERVER_FULL': "Servidor lleno. Máximo 2 jugadores.",
+    'NOT_YOUR_TURN': 'No es tu turno',
+    'SHIPS_PLACEMENT_ERROR': 'Error colocando barcos',
+    'OPPONENT_DISCONNECTED': 'Tu oponente se ha desconectado'
+}
+GAME_MESSAGES = {
+    'GAME_STARTED': 'El juego ha comenzado - Pantalla de juego activa',
+    'WINNER': '¡Ganaste!',
+    'LOSER': 'Perdiste'
+}
+
+# === CONFIGURACIÓN DE SHIP ===
+# Constantes para la clase Ship
+SHIP_POSITION_NOT_HIT_THRESHOLD = 0
+SHIP_INITIAL_HITS = 0
+SHIP_ORIENTATION_HORIZONTAL = True
+SHIP_ORIENTATION_VERTICAL = False
+ERROR_MESSAGES_SHIP = {
+    'EMPTY_POSITIONS': "Las posiciones no pueden estar vacías",
+    'MISSING_INIT_PARAMS': "Debe proporcionar 'size' o 'positions' para inicializar el barco"
+}
+
+# === CONFIGURACIÓN DE NETWORK MANAGER ===
+# Constantes para la clase NetworkManager
+THREAD_DAEMON_MODE = True
+NETWORK_ENCODING = 'utf-8'
+MESSAGE_BUFFER_SPLIT_LIMIT = 1
+JSON_MESSAGE_DELIMITER = '\n'
+MESSAGE_TYPES = {
+    'PLAYER_CONNECT': 'player_connect',
+    'PLAYERS_READY': 'players_ready',
+    'GAME_START': 'game_start',
+    'GAME_UPDATE': 'game_update',
+    'SHOT_RESULT': 'shot_result',
+    'GAME_OVER': 'game_over',
+    'PLAYER_DISCONNECT': 'player_disconnect',
+    'ERROR': 'error',
+    'PLACE_SHIPS': 'place_ships',
+    'SHOT': 'shot',
+    'START_GAME': 'start_game'
+}
+NETWORK_LOG_MESSAGES = {
+    'NOT_CONNECTED': "❌ No conectado al servidor",
+    'SEND_SUCCESS': "✅ Mensaje enviado exitosamente",
+    'SERVER_DISCONNECTED': "🔌 Error: Servidor desconectado durante envío",
+    'NO_DATA_RECEIVED': "🔌 Servidor desconectado - No se recibieron más datos",
+    'CONNECTION_RESET': "🔌 Servidor desconectado - Conexión resetteada/abortada",
+    'NOTIFYING_DISCONNECT': "📞 Notificando desconexión del servidor",
+    'NO_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para server_disconnect",
+    'NO_GAME_START_CALLBACK': "⚠️ No hay callback configurado para game_start",
+    'NO_PLAYER_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para player_disconnect",
+    'UNKNOWN_PLAYER': 'desconocido',
+    'DEFAULT_DISCONNECT_MESSAGE': 'Jugador desconectado',
+    'DEFAULT_ERROR_MESSAGE': 'Error desconocido',
+    'NO_CONNECTION': "❌ ERROR: No hay conexión al servidor"
+}
 
 # === CONFIGURACIÓN DE MENU_SCREEN ===
 # Constantes para la clase MenuScreen
@@ -336,10 +445,17 @@ SHIP_PREVIEW_ALPHA = 60
 SHIP_PREVIEW_COLOR_VALID = (0, 255, 0)
 SHIP_PREVIEW_COLOR_INVALID = (255, 50, 50)
 
-# Eventos de mouse y teclado
+# Eventos de mouse y teclado (solo disponibles si pygame está importado)
 MOUSE_LEFT_BUTTON = 1
 MOUSE_RIGHT_BUTTON = 3
-KEY_ROTATE = pygame.K_r
+if PYGAME_AVAILABLE:
+    KEY_ROTATE = pygame.K_r
+else:
+    KEY_ROTATE = 114  # Valor numérico de pygame.K_r
+
+# Configuración de sonidos
+MISSILE_SOUND_VOLUME = 0.3
+WATER_SPLASH_VOLUME = 0.25
 
 # Textos del juego
 GAME_TEXT = {
@@ -415,212 +531,3 @@ SHOT_RESULTS = {
     'MISS': 'miss',
     'SUNK': 'sunk'
 }
-
-# === CONFIGURACIÓN DE RED (cliente) ===
-DEFAULT_SERVER_HOST = "localhost"
-DEFAULT_SERVER_PORT = 8888
-NETWORK_BUFFER_SIZE = 1024
-NETWORK_TIMEOUT = 1.0
-CONNECTION_CHECK_INTERVAL = 1.0
-
-# Configuraciones de red adicionales
-THREAD_DAEMON_MODE = True
-NETWORK_ENCODING = 'utf-8'
-MESSAGE_BUFFER_SPLIT_LIMIT = 1
-JSON_MESSAGE_DELIMITER = '\n'
-
-# Tipos de mensajes de red
-MESSAGE_TYPES = {
-    'PLAYER_CONNECT': 'player_connect',
-    'PLAYERS_READY': 'players_ready',
-    'GAME_START': 'game_start',
-    'GAME_UPDATE': 'game_update',
-    'SHOT_RESULT': 'shot_result',
-    'GAME_OVER': 'game_over',
-    'PLAYER_DISCONNECT': 'player_disconnect',
-    'ERROR': 'error',
-    'PLACE_SHIPS': 'place_ships',
-    'SHOT': 'shot',
-    'START_GAME': 'start_game'
-}
-
-# Mensajes de log de red
-NETWORK_LOG_MESSAGES = {
-    'NOT_CONNECTED': "❌ No conectado al servidor",
-    'SEND_SUCCESS': "✅ Mensaje enviado exitosamente",
-    'SERVER_DISCONNECTED': "🔌 Error: Servidor desconectado durante envío",
-    'NO_DATA_RECEIVED': "🔌 Servidor desconectado - No se recibieron más datos",
-    'CONNECTION_RESET': "🔌 Servidor desconectado - Conexión resetteada/abortada",
-    'NOTIFYING_DISCONNECT': "📞 Notificando desconexión del servidor",
-    'NO_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para server_disconnect",
-    'NO_GAME_START_CALLBACK': "⚠️ No hay callback configurado para game_start",
-    'NO_PLAYER_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para player_disconnect",
-    'UNKNOWN_PLAYER': 'desconocido',
-    'DEFAULT_DISCONNECT_MESSAGE': 'Jugador desconectado',
-    'DEFAULT_ERROR_MESSAGE': 'Error desconocido',
-    'NO_CONNECTION': "❌ ERROR: No hay conexión al servidor"
-}
-
-# Máximo de jugadores
-MAX_PLAYERS = 2
-
-# Límites de puerto
-MIN_PORT_NUMBER = 1
-MAX_PORT_NUMBER = 65535
-
-# === CONFIGURACIÓN DE DESARROLLO ===
-# Flags de debug
-DEBUG_NETWORK = False
-DEBUG_GAME_STATE = False
-DEBUG_UI = False
-
-# === CONSTANTES ADICIONALES PARA REFACTORIZACIÓN ===
-# Constantes de explosión adicionales
-EXPLOSION_RADIUS_REDUCTION = 2
-EXPLOSION_EFFECT_OFFSET = 5
-EXPLOSION_BASE_RADIUS = 12
-EXPLOSION_RADIUS_STEP = 3
-
-# Constantes de salpicaduras adicionales
-SPLASH_EFFECT_RADIUS = 4
-SPLASH_EFFECT_Y_OFFSET = 8
-SPLASH_EFFECT_SPACING = 2
-
-# Constantes de coordenadas del tablero
-COORDINATE_BG_DIVISION_FACTOR = 3
-COORDINATE_BG_HEIGHT_DIVISION = 4
-COORDINATE_BG_COLOR = (50, 80, 120)
-COORDINATE_BORDER_WIDTH = 1
-
-# Constantes de márgenes de celdas
-CELL_MARGIN_DOUBLE = 4
-
-# Constantes de dibujo de barcos
-SHIP_HULL_OFFSET = 6
-SHIP_HULL_HEIGHT_REDUCTION = 12
-SHIP_WATER_LINE_OFFSET = 4
-SHIP_WATER_LINE_HEIGHT = 8
-SHIP_DECK_OFFSET_Y = 8
-SHIP_DECK_WIDTH_REDUCTION = 8
-SHIP_DECK_HEIGHT_REDUCTION = 20
-
-# Tamaños de barcos
-SHIP_SIZE_CARRIER = 5     # Portaaviones
-SHIP_SIZE_DESTROYER = 4   # Destructor
-SHIP_SIZE_CRUISER = 3     # Crucero/Barco de ataque
-SHIP_SIZE_SUBMARINE = 2   # Submarino/Lancha táctica
-
-# Constantes de portaaviones
-FLIGHT_DECK_MARGIN = 5
-FLIGHT_DECK_WIDTH_REDUCTION = 10
-FLIGHT_DECK_HEIGHT = 8
-FLIGHT_DECK_COLOR = (90, 90, 90)
-CARRIER_TOWER_X_RATIO = 0.7
-CARRIER_TOWER_Y_RATIO = 0.3
-CARRIER_TOWER_WIDTH = 15
-CARRIER_TOWER_HEIGHT = 20
-TOWER_COLOR = (70, 70, 70)
-CARRIER_DECK_LINES = 3
-
-# Constantes de radar
-RADAR_OFFSET = 7
-RADAR_HEIGHT = 3
-RADAR_LINE_WIDTH = 2
-RADAR_ANTENNA_COLOR = (200, 200, 200)
-RADAR_DISH_COLOR = (100, 255, 100)
-RADAR_DISH_RADIUS = 3
-
-# Constantes de líneas de cubierta
-DECK_LINE_COLOR = (70, 70, 70)
-DECK_LINE_WIDTH = 1
-FLIGHT_DECK_LINE_Y1 = 6
-FLIGHT_DECK_LINE_Y2 = 12
-
-# Constantes de destructor
-DESTROYER_TURRET1_RATIO = 0.2
-DESTROYER_TURRET2_RATIO = 0.8
-DESTROYER_BRIDGE_RATIO = 0.5
-DESTROYER_TURRET_COLOR = (60, 60, 60)
-DESTROYER_CANNON_COLOR = (40, 40, 40)
-DESTROYER_BRIDGE_COLOR = (80, 80, 80)
-DESTROYER_MAIN_TURRET_SIZE = 8
-DESTROYER_REAR_TURRET_SIZE = 6
-DESTROYER_MAIN_CANNON_LENGTH = 15
-DESTROYER_REAR_CANNON_LENGTH = 12
-DESTROYER_MAIN_CANNON_WIDTH = 4
-DESTROYER_REAR_CANNON_WIDTH = 3
-DESTROYER_BRIDGE_HALF_WIDTH = 8
-DESTROYER_BRIDGE_OFFSET = 8
-DESTROYER_BRIDGE_WIDTH = 16
-DESTROYER_BRIDGE_HEIGHT = 12
-DESTROYER_BRIDGE_WINDOWS = 3
-DESTROYER_WINDOW_OFFSET = 6
-DESTROYER_WINDOW_SPACING = 4
-DESTROYER_WINDOW_COLOR = (100, 150, 200)
-DESTROYER_WINDOW_Y = 10
-DESTROYER_WINDOW_WIDTH = 2
-DESTROYER_WINDOW_HEIGHT = 3
-
-# Constantes de barco de ataque
-ATTACK_SHIP_GUN_RATIO = 0.3
-ATTACK_SHIP_MISSILE_RATIO = 0.7
-ATTACK_SHIP_SUPERSTRUCTURE_RATIO = 0.4
-ATTACK_SHIP_GUN_COLOR = (50, 50, 50)
-ATTACK_SHIP_CANNON_COLOR = (35, 35, 35)
-ATTACK_SHIP_MISSILE_COLOR = (70, 70, 70)
-ATTACK_SHIP_SUPERSTRUCTURE_COLOR = (75, 75, 75)
-ATTACK_SHIP_GUN_SIZE = 6
-ATTACK_SHIP_CANNON_LENGTH = 10
-ATTACK_SHIP_CANNON_WIDTH = 3
-ATTACK_SHIP_MISSILE_HALF_WIDTH = 4
-ATTACK_SHIP_MISSILE_HALF_HEIGHT = 3
-ATTACK_SHIP_MISSILE_WIDTH = 8
-ATTACK_SHIP_MISSILE_HEIGHT = 6
-ATTACK_SHIP_CABIN_WIDTH_RATIO = 0.3
-ATTACK_SHIP_SUPERSTRUCTURE_HEIGHT = 14
-
-# Constantes de lancha táctica
-TACTICAL_BOAT_GUN_RATIO = 0.4
-TACTICAL_BOAT_CABIN_RATIO = 0.6
-TACTICAL_BOAT_GUN_COLOR = (45, 45, 45)
-TACTICAL_BOAT_CANNON_COLOR = (30, 30, 30)
-TACTICAL_BOAT_CABIN_COLOR = (70, 70, 70)
-TACTICAL_BOAT_WINDOW_COLOR = (100, 150, 200)
-TACTICAL_BOAT_GUN_SIZE = 4
-TACTICAL_BOAT_CANNON_LENGTH = 8
-TACTICAL_BOAT_CANNON_WIDTH = 2
-TACTICAL_BOAT_CABIN_WIDTH_RATIO = 0.3
-TACTICAL_BOAT_CABIN_HEIGHT = 10
-TACTICAL_BOAT_CABIN_OFFSET = 8
-TACTICAL_BOAT_WINDOW_WIDTH = 4
-TACTICAL_BOAT_WINDOW_HEIGHT = 3
-TACTICAL_BOAT_WINDOW_OFFSET = 0.65
-TACTICAL_BOAT_WINDOW_Y_OFFSET = 10
-
-# Constantes específicas de tablero de juego
-GRID_LINE_WIDTH_NORMAL = 1
-GRID_LINE_WIDTH_THICK = 2
-GRID_LINE_INTERVAL = 5
-BOARD_DIVISION_FACTOR = 2
-ALTERNATING_COLOR_MODULO = 2
-
-# Constantes de misiles
-MISSILE_BODY_WIDTH = 16
-MISSILE_BODY_HEIGHT = 24
-MISSILE_BODY_OFFSET_X = 8
-MISSILE_BODY_OFFSET_Y = 12
-MISSILE_TIP_OFFSET = 15
-MISSILE_TIP_WIDTH = 6
-MISSILE_TIP_HEIGHT = 8
-MISSILE_FIN_WIDTH = 4
-MISSILE_FIN_HEIGHT = 7
-MISSILE_FIN_OFFSET = 12
-
-# Constantes de decoración de barcos
-SHIP_HULL_MARGIN = 6
-SHIP_DECK_MARGIN = 4
-SHIP_DECK_THICKNESS = 8
-SHIP_WATER_LINE_THICKNESS = 4
-SHIP_DECK_SIDE_MARGIN = 8
-SHIP_DECK_TOP_MARGIN = 20
-EXPLOSION_HIT_RADIUS = 12

@@ -253,10 +253,7 @@ class MenuScreen:
         Returns:
             Tuple[str, Tuple[int, int, int]]: Texto de estado y color.
         """
-        if self.server_connected:
-            return self._get_connected_status()
-        else:
-            return self._get_disconnected_status()
+        return self._get_connected_status() if self.server_connected else self._get_disconnected_status()
             
     def _get_connected_status(self) -> Tuple[str, Tuple[int, int, int]]:
         """Obtener estado cuando está conectado.
@@ -266,10 +263,7 @@ class MenuScreen:
         """
         self._update_connect_button_connected()
         
-        if self.players_ready:
-            return self._get_players_ready_status()
-        else:
-            return self._get_waiting_players_status()
+        return self._get_players_ready_status() if self.players_ready else self._get_waiting_players_status()
             
     def _update_connect_button_connected(self) -> None:
         """Actualizar botón de conexión cuando está conectado."""
@@ -329,10 +323,8 @@ class MenuScreen:
         """
         if not button['enabled']:
             return button.get('disabled_color', (100, 100, 100))
-        elif button['rect'].collidepoint(mouse_pos):
-            return button['hover_color']
-        else:
-            return button['color']
+        
+        return button['hover_color'] if button['rect'].collidepoint(mouse_pos) else button['color']
 
     def draw(self) -> None:
         """Dibujar toda la pantalla del menú."""
@@ -373,10 +365,9 @@ class MenuScreen:
         Returns:
             Tuple[int, int, int]: Color RGB del botón.
         """
-        if self.mute_button['rect'].collidepoint(mouse_pos):
-            return self.mute_button['hover_color']
-        else:
-            return self.mute_button['color']
+        return (self.mute_button['hover_color'] 
+                if self.mute_button['rect'].collidepoint(mouse_pos) 
+                else self.mute_button['color'])
             
     def _draw_mute_button_rectangle(self, color: Tuple[int, int, int]) -> None:
         """Dibujar rectángulo del botón de música.
@@ -395,15 +386,12 @@ class MenuScreen:
         self.screen.blit(text_surface, text_rect)
         
     def _get_mute_button_text(self) -> str:
-        """Obtener texto del botón de música según estado.
+        """Obtener texto apropiado para el botón de música.
         
         Returns:
             str: Texto apropiado para el botón.
         """
-        if self.music_muted:
-            return self.mute_button['text_muted']
-        else:
-            return self.mute_button['text']
+        return self.mute_button['text_muted'] if self.music_muted else self.mute_button['text']
     
     def toggle_music_mute(self) -> None:
         """Alternar entre silenciar y reproducir la música."""

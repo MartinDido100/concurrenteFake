@@ -4,7 +4,7 @@ Paquete de clases para el juego de Batalla Naval
 
 from .ship import Ship
 from .game_board import GameBoard
-from .colors import Colors
+# Colors integrados en constants.py - ya no se necesita importar
 from .connection_dialog import ConnectionDialog
 from .game_screen import GameScreen
 from .menu_screen import MenuScreen

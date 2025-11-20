@@ -153,9 +153,7 @@ class Ship:
         Returns:
             bool: True si el barco está hundido, False en caso contrario.
         """
-        if not self.positions:
-            return False
-        return len(self.hits) >= len(self.positions)
+        return bool(self.positions) and len(self.hits) >= len(self.positions)
     def get_remaining_positions(self) -> Set[Tuple[int, int]]:
         """Obtener las posiciones del barco que aún no han sido golpeadas.
         

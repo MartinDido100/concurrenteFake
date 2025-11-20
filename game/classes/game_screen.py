@@ -447,10 +447,7 @@ class GameScreen:
         Returns:
             str: Texto de estado de batalla.
         """
-        if self.my_turn:
-            return GAME_TEXT['YOUR_TURN']
-        else:
-            return GAME_TEXT['OPPONENT_TURN']
+        return GAME_TEXT['YOUR_TURN'] if self.my_turn else GAME_TEXT['OPPONENT_TURN']
             
     def _draw_additional_info(self) -> None:
         """Dibujar información adicional del juego."""
