@@ -8,7 +8,6 @@ from typing import Dict, Optional, Any
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from constants import *
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from classes.enums import GameState, MessageType
 from classes.player import Player
 
@@ -23,6 +22,7 @@ class BattleshipServer:
         self.current_turn: Optional[str] = None
         
     async def start_server(self) -> None:
+        print(f"Starting Battleship server on {self.host}:{self.port}...")
         server = await asyncio.start_server(
             self.handle_client, self.host, self.port
         )
@@ -31,13 +31,13 @@ class BattleshipServer:
             await server.serve_forever()
 
     async def handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        client_addr = writer.get_extra_info('peername')
+        writer.get_extra_info('peername')
         player_id = self._generate_player_id()
         
         if not await self._validate_new_connection(writer):
             return
             
-        player = await self._create_and_register_player(player_id, writer)
+        await self._create_and_register_player(player_id, writer)
         await self._handle_client_communication(player_id, reader)
         
     def _generate_player_id(self) -> str:

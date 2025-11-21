@@ -1,5 +1,5 @@
 @echo off
 
-python start_server.py
+python server.py
 
 pause

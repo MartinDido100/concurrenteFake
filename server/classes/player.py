@@ -26,6 +26,7 @@ class Player:
         
     def _initialize_grid(self) -> List[List[int]]:
         return [[CELL_EMPTY for _ in range(GRID_SIZE)] for _ in range(GRID_SIZE)]
+    
     async def send_message(self, message_type: MessageType, data: Optional[Any] = None) -> bool:
         try:
             message = self._create_message(message_type, data)

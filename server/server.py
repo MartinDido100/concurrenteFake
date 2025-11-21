@@ -4,17 +4,17 @@ import os
 
 sys.path.append(os.path.join(os.path.dirname(__file__), 'classes'))
 
-sys.path.append(os.path.dirname(__file__))
-
 from battleship_server import BattleshipServer
-from constants import *
 
 async def main():
     server = BattleshipServer()
     try:
         await server.start_server()
+    except KeyboardInterrupt:
+        print("Servidor detenido por el usuario")
     except Exception as e:
-        pass
+        print(f"Error en el servidor: {e}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())
