@@ -73,30 +73,17 @@ class BattleshipClient:
     def init_background_music(self):
         try:
             self._load_and_play_menu_music()
-            self._display_music_success_message()
         except pygame.error as e:
-            self._handle_music_pygame_error(e)
+            print(f"Error al cargar música de fondo: {e}")
         except FileNotFoundError:
-            self._handle_music_file_not_found()
+            print(f"No se encontró el archivo {PIRATE_MUSIC_FILE}")
     
     def _load_and_play_menu_music(self):
-        music_path = self._get_menu_music_path()
+        music_path = os.path.join("assets", "sounds", PIRATE_MUSIC_FILE)
         pygame.mixer.music.load(music_path)
         pygame.mixer.music.set_volume(MUSIC_VOLUME_MENU)
         pygame.mixer.music.play(INFINITE_LOOP)
-    
-    def _get_menu_music_path(self):
-        return os.path.join("assets", "sounds", PIRATE_MUSIC_FILE)
-    
-    def _display_music_success_message(self):
-        print(f"Música de fondo '{PIRATE_MUSIC_FILE}' iniciada")
-    
-    def _handle_music_pygame_error(self, error):
-        print(f"Error al cargar música de fondo: {error}")
-    
-    def _handle_music_file_not_found(self):
-        print(f"No se encontró el archivo {PIRATE_MUSIC_FILE}")
-
+   
     def run(self):
         while self.running:
             self._process_game_events()
@@ -189,7 +176,7 @@ class BattleshipClient:
         if self.current_state == "menu":
             self._handle_menu_events(event)
         elif self.current_state == "game":
-            self._handle_game_events(event)
+            self.game_screen.handle_event(event)
         elif self.current_state == "game_over":
             self._handle_game_over_events(event)
     
@@ -212,30 +199,21 @@ class BattleshipClient:
         if connection_config:
             self._attempt_server_connection(connection_config)
         else:
-            self._display_connection_cancelled_message()
+            print("Conexión cancelada por el usuario")
     
     def _attempt_server_connection(self, config):
         host, port = config['host'], config['port']
         self._display_connection_attempt_info(host, port)
         
         if self.network_manager.connect_to_server(host, port):
-            self._display_connection_success(host, port)
+            print(f"Conectado exitosamente a {host}:{port}")
         else:
-            self._display_connection_failure(host, port)
+            print(f"Error: No se pudo conectar a {host}:{port}")
     
     def _display_connection_attempt_info(self, host, port):
         print(f"Intentando conectar al servidor...")
         print(f"Host: {host}")
         print(f"Puerto: {port}")
-    
-    def _display_connection_success(self, host, port):
-        print(f"Conectado exitosamente a {host}:{port}")
-    
-    def _display_connection_failure(self, host, port):
-        print(f"Error: No se pudo conectar a {host}:{port}")
-    
-    def _display_connection_cancelled_message(self):
-        print("Conexión cancelada por el usuario")
     
     def _handle_start_game_action(self):
         if self.network_manager.start_game():
@@ -243,9 +221,6 @@ class BattleshipClient:
     
     def _handle_toggle_music_action(self):
         self.menu_screen.toggle_music_mute()
-    
-    def _handle_game_events(self, event):
-        self.game_screen.handle_event(event)
     
     def _handle_game_over_events(self, event):
         action = self.game_over_screen.handle_event(event)
@@ -336,8 +311,8 @@ class BattleshipClient:
     def on_game_start(self, data):
         self._display_game_start_messages(data)
         self._transition_audio_to_game()
-        self._reset_game_state_for_new_game()
-        self._change_to_game_state()
+        self._reset_game_state_safely("Error reseteando pantalla de juego")
+        self.current_state = "game"
     
     def _display_game_start_messages(self, data):
         print(f"MENSAJE GAME_START RECIBIDO: {data}")
@@ -345,45 +320,20 @@ class BattleshipClient:
         print("Redirigiendo AMBOS clientes a la pantalla de juego...")
     
     def _transition_audio_to_game(self):
-        self._stop_menu_music()
-        self._start_game_music()
-    
-    def _stop_menu_music(self):
         pygame.mixer.music.stop()
-        print("Música del menú detenida")
+        self._start_game_music()
     
     def _start_game_music(self):
         try:
             self._load_and_play_game_music()
-            self._display_game_music_success()
-        except pygame.error as e:
-            self._handle_game_music_pygame_error(e)
         except FileNotFoundError:
-            self._handle_game_music_file_not_found()
+            print(f"No se encontró el archivo {BACKGROUND_MUSIC_FILE}")
     
     def _load_and_play_game_music(self):
-        game_music_path = self._get_game_music_path()
+        game_music_path = os.path.join("assets", "sounds", BACKGROUND_MUSIC_FILE)
         pygame.mixer.music.load(game_music_path)
         pygame.mixer.music.set_volume(MUSIC_VOLUME_GAME)
         pygame.mixer.music.play(INFINITE_LOOP)
-    
-    def _get_game_music_path(self):
-        return os.path.join("assets", "sounds", BACKGROUND_MUSIC_FILE)
-    
-    def _display_game_music_success(self):
-        print(f"Música de fondo del juego '{BACKGROUND_MUSIC_FILE}' iniciada")
-    
-    def _handle_game_music_pygame_error(self, error):
-        print(f"Error al cargar música de juego: {error}")
-    
-    def _handle_game_music_file_not_found(self):
-        print(f"No se encontró el archivo {BACKGROUND_MUSIC_FILE}")
-    
-    def _reset_game_state_for_new_game(self):
-        self._reset_game_state_safely("Error reseteando pantalla de juego")
-    
-    def _reset_game_state_after_game_over(self):
-        self._reset_game_state_safely("Error reseteando pantalla tras game over")
     
     def _reset_game_state_safely(self, error_msg):
         if hasattr(self, 'game_screen') and self.game_screen is not None:
@@ -391,10 +341,6 @@ class BattleshipClient:
                 self.game_screen.reset_game_state()
             except Exception as e:
                 print(f"{error_msg}: {e}")
-    
-    def _change_to_game_state(self):
-        self.current_state = "game"
-        print("Estado cambiado a 'game' - Pantalla de juego activa")
     
     def on_game_update(self, data):
         phase = data.get('phase')
@@ -412,7 +358,7 @@ class BattleshipClient:
     def on_game_over(self, data):
         print(f"Juego terminado: {data}")
         self._stop_game_music()
-        self._reset_game_state_after_game_over()
+        self._reset_game_state_safely("Error reseteando pantalla tras game over")
         self._create_and_show_game_over_screen(data)
     
     def _stop_game_music(self):
@@ -425,21 +371,10 @@ class BattleshipClient:
         self.current_state = "game_over"
     
     def on_server_disconnect(self):
-        self._display_disconnect_message()
-        self._stop_all_music()
+        pygame.mixer.music.stop()
         self._reset_network_manager_state()
         self._reset_menu_and_restart_music()
         self._return_to_menu_after_disconnect()
-    
-    def _display_disconnect_message(self):
-        if self.current_state in ["game", "game_over"]:
-            print("Oponente desconectado - Redirigiendo al menú principal")
-        else:
-            print("Servidor desconectado - Redirigiendo al menú principal")
-    
-    def _stop_all_music(self):
-        pygame.mixer.music.stop()
-        print("Música detenida por desconexión")
     
     def _reset_network_manager_state(self):
         self.network_manager.connected = False
@@ -448,12 +383,8 @@ class BattleshipClient:
     def _reset_menu_and_restart_music(self):
         self.menu_screen.set_connection_status(False, False)
         self.init_background_music()
-        self._restore_music_mute_state()
-    
-    def _restore_music_mute_state(self):
         self._apply_mute_if_needed()
     
     def _return_to_menu_after_disconnect(self):
         self.current_state = "menu"
         self.game_over_screen = None
-        print("Redirigido al menú principal")

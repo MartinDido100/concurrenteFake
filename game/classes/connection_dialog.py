@@ -43,9 +43,9 @@ class ConnectionDialog:
     def _initialize_clipboard(self):
         try:
             pygame.scrap.init()
-            print("✅ Módulo de portapapeles inicializado correctamente")
+            print("Módulo de portapapeles inicializado correctamente")
         except Exception as e:
-            print(f"❌ Error al inicializar portapapeles: {e}")
+            print(f"Error al inicializar portapapeles: {e}")
     
     def _initialize_state(self):
         self.active = True
@@ -163,23 +163,23 @@ class ConnectionDialog:
     
     def _validate_host(self):
         if not self.host_input.strip():
-            print("❌ Host vacío - necesitas ingresar una IP")
+            print("Host vacío - necesitas ingresar una IP")
             return False
         return True
     
     def _validate_and_get_port(self):
         if not self.port_input.strip():
-            print("❌ Puerto vacío - usando puerto por defecto")
+            print("Puerto vacío - usando puerto por defecto")
             self.port_input = str(DEFAULT_SERVER_PORT)
         
         try:
             port = int(self.port_input.strip())
             if not (MIN_PORT_NUMBER <= port <= MAX_PORT_NUMBER):
-                print(f"❌ Puerto fuera de rango válido ({MIN_PORT_NUMBER}-{MAX_PORT_NUMBER})")
+                print(f"Puerto fuera de rango válido ({MIN_PORT_NUMBER}-{MAX_PORT_NUMBER})")
                 return None
             return port
         except ValueError:
-            print("❌ Puerto inválido - debe ser un número")
+            print("Puerto inválido - debe ser un número")
             return None
     
     def _complete_connection(self, port):
@@ -188,7 +188,7 @@ class ConnectionDialog:
             'port': port
         }
         self.active = False
-        print(f"✅ Conectando a {self.result['host']}:{self.result['port']}")
+        print(f"Conectando a {self.result['host']}:{self.result['port']}")
     
     def _handle_cancel(self):
         self.result = None
@@ -226,7 +226,7 @@ class ConnectionDialog:
                     self.host_input += valid_chars
                     print(f"📋 Pegado desde portapapeles: {valid_chars}")
         except Exception as e:
-            print(f"❌ Error al pegar: {e}")
+            print(f"Error al pegar: {e}")
     
     def _is_valid_host_char(self, event):
         return (event.unicode and 

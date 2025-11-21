@@ -73,7 +73,7 @@ MUSIC_VOLUME_MENU = 0.3
 MUSIC_VOLUME_GAME = 0.2
 MISSILE_SOUND_VOLUME = 0.3
 SPLASH_SOUND_VOLUME = 0.25
-WATER_SPLASH_VOLUME = 0.25  # Alias para SPLASH_SOUND_VOLUME
+WATER_SPLASH_VOLUME = 0.25  
 MUTED_VOLUME = 0.0
 
 MIXER_FREQUENCY = 44100
@@ -88,7 +88,6 @@ COLOR_MISS = (255, 255, 255)
 COLOR_GRID = (0, 0, 0)
 COLOR_BACKGROUND = (30, 60, 90)
 
-# Colores adicionales del océano
 COLOR_OCEAN_START = (30, 60, 90)
 COLOR_OCEAN_END = (70, 130, 200)
 COLOR_WATER_DARK = (50, 100, 150)
@@ -155,8 +154,6 @@ SPLASH_COLORS = [
 MISSILE_SIZE_HIT = 3
 MISSILE_SIZE_MISS = 4
 
-# === CONFIGURACIÓN DE LAYOUT ===
-# Ship Status Panels
 SHIP_STATUS_PANEL_WIDTH = 200
 SHIP_STATUS_PANEL_HEIGHT = 300
 SHIP_STATUS_MARGIN = 10
@@ -192,8 +189,6 @@ COORD_FONT_CELL_RATIO = 2
 
 ANIMATION_FRAME_TIME = 16
 
-# === CONFIGURACIÓN DE MENU_SCREEN ===
-# Constantes para la clase MenuScreen
 MENU_BUTTON_DIVISION_FACTOR = 2
 MENU_BUTTON_BORDER_WIDTH = 3
 MUTE_BUTTON_BORDER_WIDTH = 2
@@ -298,17 +293,17 @@ GAME_TEXT = {
     'HITS_STATUS': "{}/{} impactos",
     'ACTIVE_STATUS': "ACTIVO",
     'SHIPS_SENT': "Barcos enviados al servidor",
-    'BATTLE_START': "🚀 Iniciando fase de batalla...",
-    'SUNK_ENEMY_SHIP': "🎯 ¡HUNDISTE EL {} ENEMIGO!",
-    'ENEMY_SUNK_MY_SHIP': "💥 ¡El enemigo hundió tu {}!",
-    'MISSILE_SOUND_PLAY': "🔊 Reproduciendo sonido de impacto de misil",
-    'SPLASH_SOUND_PLAY': "🔊 Reproduciendo sonido de salpicadura de agua",
-    'MISSILE_SOUND_ERROR': "❌ Error al reproducir sonido de misil: {}",
-    'SPLASH_SOUND_ERROR': "❌ Error al reproducir sonido de salpicadura: {}",
-    'MISSILE_FILE_NOT_FOUND': "❌ No se encontró el archivo misil.mp3",
-    'SPLASH_FILE_NOT_FOUND': "❌ No se encontró el archivo waterSplash.mp3",
-    'GAME_RESET': "🔄 Estado del juego reseteado para nueva partida",
-    'REALISTIC_SHIPS_INIT': "✅ Sistema de barcos realistas inicializado"
+    'BATTLE_START': "Iniciando fase de batalla...",
+    'SUNK_ENEMY_SHIP': "¡HUNDISTE EL {} ENEMIGO!",
+    'ENEMY_SUNK_MY_SHIP': "¡El enemigo hundió tu {}!",
+    'MISSILE_SOUND_PLAY': "Reproduciendo sonido de impacto de misil",
+    'SPLASH_SOUND_PLAY': "Reproduciendo sonido de salpicadura de agua",
+    'MISSILE_SOUND_ERROR': "Error al reproducir sonido de misil: {}",
+    'SPLASH_SOUND_ERROR': "Error al reproducir sonido de salpicadura: {}",
+    'MISSILE_FILE_NOT_FOUND': "No se encontró el archivo misil.mp3",
+    'SPLASH_FILE_NOT_FOUND': "No se encontró el archivo waterSplash.mp3",
+    'GAME_RESET': "Estado del juego reseteado para nueva partida",
+    'REALISTIC_SHIPS_INIT': "Sistema de barcos realistas inicializado"
 }
 
 SOUND_PATHS = {
@@ -374,19 +369,19 @@ MESSAGE_TYPES = {
 }
 
 NETWORK_LOG_MESSAGES = {
-    'NOT_CONNECTED': "❌ No conectado al servidor",
-    'SEND_SUCCESS': "✅ Mensaje enviado exitosamente",
-    'SERVER_DISCONNECTED': "🔌 Error: Servidor desconectado durante envío",
-    'NO_DATA_RECEIVED': "🔌 Servidor desconectado - No se recibieron más datos",
-    'CONNECTION_RESET': "🔌 Servidor desconectado - Conexión resetteada/abortada",
-    'NOTIFYING_DISCONNECT': "📞 Notificando desconexión del servidor",
-    'NO_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para server_disconnect",
-    'NO_GAME_START_CALLBACK': "⚠️ No hay callback configurado para game_start",
-    'NO_PLAYER_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para player_disconnect",
+    'NOT_CONNECTED': "No conectado al servidor",
+    'SEND_SUCCESS': "Mensaje enviado exitosamente",
+    'SERVER_DISCONNECTED': "Error: Servidor desconectado durante envío",
+    'NO_DATA_RECEIVED': "Servidor desconectado - No se recibieron más datos",
+    'CONNECTION_RESET': "Servidor desconectado - Conexión resetteada/abortada",
+    'NOTIFYING_DISCONNECT': "Notificando desconexión del servidor",
+    'NO_DISCONNECT_CALLBACK': "No hay callback configurado para server_disconnect",
+    'NO_GAME_START_CALLBACK': "No hay callback configurado para game_start",
+    'NO_PLAYER_DISCONNECT_CALLBACK': "No hay callback configurado para player_disconnect",
     'UNKNOWN_PLAYER': 'desconocido',
     'DEFAULT_DISCONNECT_MESSAGE': 'Jugador desconectado',
     'DEFAULT_ERROR_MESSAGE': 'Error desconocido',
-    'NO_CONNECTION': "❌ ERROR: No hay conexión al servidor"
+    'NO_CONNECTION': "ERROR: No hay conexión al servidor"
 }
 
 MAX_PLAYERS = 2

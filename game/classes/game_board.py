@@ -91,7 +91,7 @@ class GameBoard:
     def draw_missile(self, screen, center_x, center_y, color, shot_type):
         if shot_type == 'hit':
             self._draw_hit_missile(screen, center_x, center_y, color)
-        else:  # miss
+        else:  
             self._draw_miss_missile(screen, center_x, center_y, color)
     
     def _draw_hit_missile(self, screen, center_x, center_y, color):
