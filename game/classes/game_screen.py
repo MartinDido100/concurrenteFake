@@ -490,7 +490,7 @@ class GameScreen:
             sunk_ship_name = ship_info.get('name')
             ship_size = ship_info.get('size')
             ship_positions = ship_info.get('positions', [])
-            print(f"📊 Información del barco hundido: {sunk_ship_name} (tamaño: {ship_size})")
+            print(f"Información del barco hundido: {sunk_ship_name} (tamaño: {ship_size})")
 
         if result == 'hit' or result == 'sunk':
             self.play_missile_sound()
@@ -502,7 +502,7 @@ class GameScreen:
             
             if result == 'sunk' and sunk_ship_name and ship_info:
                 self.enemy_sunk_ships.append(sunk_ship_name)
-                print(f"🎯 ¡HUNDISTE EL {sunk_ship_name.upper()} ENEMIGO!")
+                print(f"¡HUNDISTE EL {sunk_ship_name.upper()} ENEMIGO!")
 
                 ship_positions = ship_info.get('positions', [])
                 for pos in ship_positions:
@@ -521,14 +521,14 @@ class GameScreen:
                     if (x, y) in ship.positions:
                         ship.hit(x, y)
                         if ship.sunk and result == 'sunk':
-                            print(f"💥 ¡El enemigo hundió tu {ship.name}!")
+                            print(f"¡El enemigo hundió tu {ship.name}!")
                         break
     
     def set_my_turn(self, is_my_turn):
         self.my_turn = is_my_turn
     
     def start_battle_phase(self):
-        print("🚀 Iniciando fase de batalla...")
+        print("Iniciando fase de batalla...")
         self.game_phase = "battle"
     
 
@@ -542,11 +542,11 @@ class GameScreen:
             missile_sound = pygame.mixer.Sound(missile_sound_path)
             missile_sound.set_volume(0.3)
             missile_sound.play()
-            print("🔊 Reproduciendo sonido de impacto de misil")
+            print("Reproduciendo sonido de impacto de misil")
         except pygame.error as e:
-            print(f"❌ Error al reproducir sonido de misil: {e}")
+            print(f"Error al reproducir sonido de misil: {e}")
         except FileNotFoundError:
-            print("❌ No se encontró el archivo misil.mp3")
+            print("No se encontró el archivo misil.mp3")
     
     def play_water_splash_sound(self):
         try:
@@ -554,11 +554,11 @@ class GameScreen:
             splash_sound = pygame.mixer.Sound(splash_sound_path)
             splash_sound.set_volume(0.25)
             splash_sound.play()
-            print("🔊 Reproduciendo sonido de salpicadura de agua")
+            print("Reproduciendo sonido de salpicadura de agua")
         except pygame.error as e:
-            print(f"❌ Error al reproducir sonido de salpicadura: {e}")
+            print(f"Error al reproducir sonido de salpicadura: {e}")
         except FileNotFoundError:
-            print("❌ No se encontró el archivo waterSplash.mp3")
+            print("No se encontró el archivo waterSplash.mp3")
 
     def reset_game_state(self):
         self.my_board = GameBoard(self.my_board.x, self.my_board.y, self.my_board.width)
@@ -574,4 +574,4 @@ class GameScreen:
         self.enemy_sunk_ships = []
         self.enemy_sunk_ships_info = {}
 
-        print("🔄 Estado del juego reseteado para nueva partida")
+        print("Estado del juego reseteado para nueva partida")

@@ -159,20 +159,6 @@ class GameBoard:
                 pygame.draw.circle(screen, explosion_color, 
                                  (center_x, center_y + explosion_offset), explosion_radius)
     
-    def _draw_splash_effect(self, screen, center_x, center_y):
-        scale_factor = self.cell_size / BASE_CELL_SIZE
-        
-        for i, splash_color in enumerate(SPLASH_COLORS):
-            splash_radius = int((SPLASH_EFFECT_RADIUS - i) * scale_factor)
-            splash_offset = int(SPLASH_EFFECT_Y_OFFSET * scale_factor)
-            splash_spacing = int(SPLASH_EFFECT_SPACING * scale_factor)
-            splash_y = center_y + splash_offset + i * splash_spacing
-            if splash_radius > 0:
-                pygame.draw.circle(screen, splash_color, 
-                                 (center_x, splash_y), splash_radius)
-    
-
-    
     def draw_coordinates(self, screen):
         coord_font = self._get_coordinate_font()
         coord_bg_width, coord_bg_height = self._get_coordinate_background_size()
@@ -561,4 +547,4 @@ class GameBoard:
         for pos_x, pos_y in ship_positions:
             self.shots[(pos_x, pos_y)] = 'sunk'
         
-        print(f"🎯 Barco enemigo {ship_name} marcado como hundido en posiciones: {ship_positions}")
+        print(f"Barco enemigo {ship_name} marcado como hundido en posiciones: {ship_positions}")

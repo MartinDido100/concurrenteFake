@@ -106,19 +106,19 @@ MESSAGE_TYPES = {
     'START_GAME': 'start_game'
 }
 NETWORK_LOG_MESSAGES = {
-    'NOT_CONNECTED': "❌ No conectado al servidor",
-    'SEND_SUCCESS': "✅ Mensaje enviado exitosamente",
-    'SERVER_DISCONNECTED': "🔌 Error: Servidor desconectado durante envío",
-    'NO_DATA_RECEIVED': "🔌 Servidor desconectado - No se recibieron más datos",
-    'CONNECTION_RESET': "🔌 Servidor desconectado - Conexión resetteada/abortada",
-    'NOTIFYING_DISCONNECT': "📞 Notificando desconexión del servidor",
-    'NO_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para server_disconnect",
-    'NO_GAME_START_CALLBACK': "⚠️ No hay callback configurado para game_start",
-    'NO_PLAYER_DISCONNECT_CALLBACK': "⚠️ No hay callback configurado para player_disconnect",
+    'NOT_CONNECTED': "No conectado al servidor",
+    'SEND_SUCCESS': "Mensaje enviado exitosamente",
+    'SERVER_DISCONNECTED': "Error: Servidor desconectado durante envío",
+    'NO_DATA_RECEIVED': "Servidor desconectado - No se recibieron más datos",
+    'CONNECTION_RESET': "Servidor desconectado - Conexión resetteada/abortada",
+    'NOTIFYING_DISCONNECT': "Notificando desconexión del servidor",
+    'NO_DISCONNECT_CALLBACK': "No hay callback configurado para server_disconnect",
+    'NO_GAME_START_CALLBACK': "No hay callback configurado para game_start",
+    'NO_PLAYER_DISCONNECT_CALLBACK': "No hay callback configurado para player_disconnect",
     'UNKNOWN_PLAYER': 'desconocido',
     'DEFAULT_DISCONNECT_MESSAGE': 'Jugador desconectado',
     'DEFAULT_ERROR_MESSAGE': 'Error desconocido',
-    'NO_CONNECTION': "❌ ERROR: No hay conexión al servidor"
+    'NO_CONNECTION': "ERROR: No hay conexión al servidor"
 }
 
 ANIMATION_FRAME_TIME = 16
@@ -147,10 +147,10 @@ SERVER_TEXT = {
     'WINNER': '¡Ganaste!',
     'LOSER': 'Perdiste',
     'SHIPS_SENT': "Barcos enviados al servidor",
-    'BATTLE_START': "🚀 Iniciando fase de batalla...",
-    'SUNK_ENEMY_SHIP': "🎯 ¡HUNDISTE EL {} ENEMIGO!",
-    'ENEMY_SUNK_MY_SHIP': "💥 ¡El enemigo hundió tu {}!",
-    'GAME_RESET': "🔄 Estado del juego reseteado para nueva partida"
+    'BATTLE_START': "Iniciando fase de batalla...",
+    'SUNK_ENEMY_SHIP': "¡HUNDISTE EL {} ENEMIGO!",
+    'ENEMY_SUNK_MY_SHIP': "¡El enemigo hundió tu {}!",
+    'GAME_RESET': "Estado del juego reseteado para nueva partida"
 }
 
 PLAYER_STATE_CONNECTED = "connected"
