@@ -32,6 +32,7 @@ class NetworkManager:
         self.on_shot_result: Optional[Callable[[Dict[str, Any]], None]] = None
         self.on_game_over: Optional[Callable[[Dict[str, Any]], None]] = None
         self.on_server_disconnect: Optional[Callable[[], None]] = None
+    
     def connect_to_server(self, host: Optional[str] = None, port: Optional[int] = None) -> bool:
         self._update_server_config(host, port)
         
@@ -76,7 +77,7 @@ class NetworkManager:
         except (ConnectionResetError, ConnectionAbortedError):
             return self._handle_connection_error()
         except Exception as e:
-            print(f"❌ Error enviando mensaje: {e}")
+            print(f"Error enviando mensaje: {e}")
             return False
             
     def _create_message(self, message_type: str, data: Optional[Dict[str, Any]]) -> str:
@@ -88,7 +89,7 @@ class NetworkManager:
         return json.dumps(message) + JSON_MESSAGE_DELIMITER
         
     def _send_raw_message(self, message_json: str) -> bool:
-        print(f"📤 Enviando mensaje al servidor: {message_json.strip()}")
+        print(f"Enviando mensaje al servidor: {message_json.strip()}")
         self.socket.send(message_json.encode(NETWORK_ENCODING))
         print(NETWORK_LOG_MESSAGES['SEND_SUCCESS'])
         return True
@@ -153,7 +154,7 @@ class NetworkManager:
         return buffer
         
     def _handle_complete_message(self, message: str) -> None:
-        print(f"📥 Mensaje recibido del servidor: {message}")
+        print(f"Mensaje recibido del servidor: {message}")
         try:
             parsed_message = json.loads(message)
             self.handle_server_message(parsed_message)
@@ -161,7 +162,7 @@ class NetworkManager:
             print(f"{NETWORK_LOG_MESSAGES['PARSING_ERROR']}: {e}")
             
     def _handle_receive_error(self, error: Exception) -> None:
-        print(f"❌ Error recibiendo mensaje: {error}")
+        print(f"Error recibiendo mensaje: {error}")
         
         self.connected = False
         if self.on_server_disconnect:
@@ -197,9 +198,9 @@ class NetworkManager:
             self.on_players_ready(data)
             
     def _handle_game_start(self, data: Dict[str, Any]) -> None:
-        print(f"🎮 Mensaje GAME_START recibido del servidor: {data}")
+        print(f"Mensaje GAME_START recibido del servidor: {data}")
         if self.on_game_start:
-            print("📞 Llamando callback on_game_start")
+            print("Llamando callback on_game_start")
             self.on_game_start(data)
         else:
             print(NETWORK_LOG_MESSAGES['NO_GAME_START_CALLBACK'])
@@ -217,13 +218,13 @@ class NetworkManager:
             self.on_game_over(data)
             
     def _handle_player_disconnect(self, data: Dict[str, Any]) -> None:
-        print(f"🔌 MENSAJE PLAYER_DISCONNECT RECIBIDO: {data}")
+        print(f"MENSAJE PLAYER_DISCONNECT RECIBIDO: {data}")
         disconnected_player = data.get('disconnected_player', NETWORK_LOG_MESSAGES['UNKNOWN_PLAYER'])
         message = data.get('message', NETWORK_LOG_MESSAGES['DEFAULT_DISCONNECT_MESSAGE'])
-        print(f"🔌 {message} (Jugador: {disconnected_player})")
+        print(f"{message} (Jugador: {disconnected_player})")
         
         if self.on_server_disconnect:
-            print("📞 Llamando callback de desconexión por jugador desconectado")
+            print("Llamando callback de desconexión por jugador desconectado")
             self.on_server_disconnect()
         else:
             print(NETWORK_LOG_MESSAGES['NO_PLAYER_DISCONNECT_CALLBACK'])
@@ -245,13 +246,13 @@ class NetworkManager:
             return False
             
         result = self.send_message(MESSAGE_TYPES['START_GAME'], {})
-        print(f"📤 Resultado del envío de start_game: {result}")
+        print(f"Resultado del envío de start_game: {result}")
         return result
         
     def _log_start_game_info(self) -> None:
-        print("🚀 INICIANDO: Enviando solicitud de inicio de juego al servidor")
-        print(f"🔌 Estado de conexión: {self.connected}")
-        print(f"🆔 ID del jugador: {self.player_id}")
+        print("INICIANDO: Enviando solicitud de inicio de juego al servidor")
+        print(f"Estado de conexión: {self.connected}")
+        print(f"ID del jugador: {self.player_id}")
         
     def _validate_connection(self) -> bool:
         if not self.connected:

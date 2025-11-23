@@ -137,6 +137,14 @@ class GameScreen:
         self._draw_ship_preview_if_needed()
         self._draw_game_info()
         
+    def draw_without_preview(self) -> None:
+        self.draw_ocean_background()
+        self.draw_board_panels()
+        self._draw_game_title()
+        self._draw_board_titles()
+        self._draw_game_boards()
+        self._draw_game_info()
+        
     def _draw_game_title(self) -> None:
         title_font = pygame.font.Font(None, GAME_FONT_SIZES['TITLE'])
         title_text = title_font.render(GAME_TEXT['TITLE'], True, COLOR_WHITE)

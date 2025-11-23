@@ -107,42 +107,69 @@ class GameBoard:
         self._draw_splash_effect(screen, center_x, center_y)
     
     def _draw_missile_body(self, screen, center_x, center_y, color):
-        missile_body = pygame.Rect(center_x - MISSILE_BODY_OFFSET_X, center_y - MISSILE_BODY_OFFSET_Y, 
-                                 MISSILE_BODY_WIDTH, MISSILE_BODY_HEIGHT)
+        scale_factor = self.cell_size / BASE_CELL_SIZE
+        missile_body_width = int(MISSILE_BODY_WIDTH * scale_factor)
+        missile_body_height = int(MISSILE_BODY_HEIGHT * scale_factor)
+        missile_body_offset_x = int(MISSILE_BODY_OFFSET_X * scale_factor)
+        missile_body_offset_y = int(MISSILE_BODY_OFFSET_Y * scale_factor)
+        
+        missile_body = pygame.Rect(center_x - missile_body_offset_x, center_y - missile_body_offset_y, 
+                                 missile_body_width, missile_body_height)
         pygame.draw.ellipse(screen, color, missile_body)
     
     def _draw_missile_tip(self, screen, center_x, center_y, tip_color):
+        scale_factor = self.cell_size / BASE_CELL_SIZE
+        tip_offset = int(MISSILE_TIP_OFFSET * scale_factor)
+        tip_width = int(MISSILE_TIP_WIDTH * scale_factor)
+        tip_height = int(MISSILE_TIP_HEIGHT * scale_factor)
+        
         points = [
-            (center_x, center_y - MISSILE_TIP_OFFSET),
-            (center_x - MISSILE_TIP_WIDTH, center_y - MISSILE_TIP_HEIGHT),
-            (center_x + MISSILE_TIP_WIDTH, center_y - MISSILE_TIP_HEIGHT)
+            (center_x, center_y - tip_offset),
+            (center_x - tip_width, center_y - tip_height),
+            (center_x + tip_width, center_y - tip_height)
         ]
         pygame.draw.polygon(screen, tip_color, points)
     
     def _draw_missile_fins(self, screen, center_x, center_y, fin_color):
+        scale_factor = self.cell_size / BASE_CELL_SIZE
+        body_offset_x = int(MISSILE_BODY_OFFSET_X * scale_factor)
+        body_offset_y = int(MISSILE_BODY_OFFSET_Y * scale_factor)
+        tip_height = int(MISSILE_TIP_HEIGHT * scale_factor)
+        fin_offset = int(MISSILE_FIN_OFFSET * scale_factor)
+        fin_width = int(MISSILE_FIN_WIDTH * scale_factor)
+        
         pygame.draw.polygon(screen, fin_color, [
-            (center_x - MISSILE_BODY_OFFSET_X, center_y + MISSILE_TIP_HEIGHT),
-            (center_x - MISSILE_FIN_OFFSET, center_y + MISSILE_FIN_OFFSET),
-            (center_x - MISSILE_FIN_WIDTH, center_y + MISSILE_BODY_OFFSET_Y)
+            (center_x - body_offset_x, center_y + tip_height),
+            (center_x - fin_offset, center_y + fin_offset),
+            (center_x - fin_width, center_y + body_offset_y)
         ])
         pygame.draw.polygon(screen, fin_color, [
-            (center_x + MISSILE_BODY_OFFSET_X, center_y + MISSILE_TIP_HEIGHT),
-            (center_x + MISSILE_FIN_OFFSET, center_y + MISSILE_FIN_OFFSET),
-            (center_x + MISSILE_FIN_WIDTH, center_y + MISSILE_BODY_OFFSET_Y)
+            (center_x + body_offset_x, center_y + tip_height),
+            (center_x + fin_offset, center_y + fin_offset),
+            (center_x + fin_width, center_y + body_offset_y)
         ])
     
     def _draw_explosion_effect(self, screen, center_x, center_y):
+        scale_factor = self.cell_size / BASE_CELL_SIZE
+        
         for i, explosion_color in enumerate(EXPLOSION_COLORS[:3]):
-            explosion_radius = MISSILE_BODY_OFFSET_X - i * EXPLOSION_RADIUS_REDUCTION
-            pygame.draw.circle(screen, explosion_color, 
-                             (center_x, center_y + EXPLOSION_EFFECT_OFFSET), explosion_radius)
+            explosion_radius = int((MISSILE_BODY_OFFSET_X - i * EXPLOSION_RADIUS_REDUCTION) * scale_factor)
+            explosion_offset = int(EXPLOSION_EFFECT_OFFSET * scale_factor)
+            if explosion_radius > 0:
+                pygame.draw.circle(screen, explosion_color, 
+                                 (center_x, center_y + explosion_offset), explosion_radius)
     
     def _draw_splash_effect(self, screen, center_x, center_y):
+        scale_factor = self.cell_size / BASE_CELL_SIZE
+        
         for i, splash_color in enumerate(SPLASH_COLORS):
-            splash_radius = SPLASH_EFFECT_RADIUS - i
-            splash_y = center_y + SPLASH_EFFECT_Y_OFFSET + i * SPLASH_EFFECT_SPACING
-            pygame.draw.circle(screen, splash_color, 
-                             (center_x, splash_y), splash_radius)
+            splash_radius = int((SPLASH_EFFECT_RADIUS - i) * scale_factor)
+            splash_offset = int(SPLASH_EFFECT_Y_OFFSET * scale_factor)
+            splash_spacing = int(SPLASH_EFFECT_SPACING * scale_factor)
+            splash_y = center_y + splash_offset + i * splash_spacing
+            if splash_radius > 0:
+                pygame.draw.circle(screen, splash_color, 
+                                 (center_x, splash_y), splash_radius)
     
 
     
@@ -522,8 +549,6 @@ class GameBoard:
             if (x, y) in ship.positions and ship.sunk:
                 return ship.name
         return None
-    
-
     
     def mark_enemy_ship_sunk(self, ship_info, shot_positions):
         if not ship_info:

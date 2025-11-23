@@ -138,13 +138,21 @@ class BattleshipClient:
             'ship_horizontal': self.game_screen.ship_horizontal,
             'my_turn': self.game_screen.my_turn,
             'my_ships': self._get_my_ships_copy(),
-            'enemy_shots': self._get_enemy_shots_copy()
+            'enemy_shots': self._get_enemy_shots_copy(),
+            'my_board_shots': self._get_my_board_shots_copy(),
+            'enemy_sunk_ships': self.game_screen.enemy_sunk_ships.copy(),
+            'enemy_sunk_ships_info': self.game_screen.enemy_sunk_ships_info.copy(),
         }
     
     def _get_my_ships_copy(self):
         if hasattr(self.game_screen, 'my_board'):
             return self.game_screen.my_board.ships.copy()
-        return []
+        return {}
+    
+    def _get_my_board_shots_copy(self):
+        if hasattr(self.game_screen, 'my_board'):
+            return self.game_screen.my_board.shots.copy()  # Disparos en TU tablero
+        return {}
     
     def _get_enemy_shots_copy(self):
         if hasattr(self.game_screen, 'enemy_board'):
@@ -161,6 +169,9 @@ class BattleshipClient:
         self.game_screen.my_turn = saved_state['my_turn']
         self.game_screen.my_board.ships = saved_state['my_ships']
         self.game_screen.enemy_board.shots = saved_state['enemy_shots']
+        self.game_screen.my_board.shots = saved_state['my_board_shots']
+        self.game_screen.enemy_sunk_ships = saved_state.get('enemy_sunk_ships', [])
+        self.game_screen.enemy_sunk_ships_info = saved_state.get('enemy_sunk_ships_info', {})
     
     def _recreate_other_screens(self):
         self.menu_screen = MenuScreen(self.screen)
@@ -205,11 +216,14 @@ class BattleshipClient:
         host, port = config['host'], config['port']
         self._display_connection_attempt_info(host, port)
         
-        if self.network_manager.connect_to_server(host, port):
+        if self.connect_to_server(host, port):
             print(f"Conectado exitosamente a {host}:{port}")
         else:
             print(f"Error: No se pudo conectar a {host}:{port}")
     
+    def connect_to_server(self, host, port):
+        return self.network_manager.connect_to_server(host, port)
+
     def _display_connection_attempt_info(self, host, port):
         print(f"Intentando conectar al servidor...")
         print(f"Host: {host}")
@@ -282,7 +296,7 @@ class BattleshipClient:
     
     def _render_game_over_state(self):
         self.game_screen.update()
-        self.game_screen.draw()
+        self.game_screen.draw_without_preview()
         self.game_over_screen.draw()
     
     def _update_display_and_clock(self):

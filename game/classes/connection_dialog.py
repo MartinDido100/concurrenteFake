@@ -268,6 +268,7 @@ class ConnectionDialog:
         subtitle = self.font_small.render("Ingresa la dirección del servidor:", True, FIELD_BACKGROUND_COLOR)
         subtitle_rect = subtitle.get_rect(center=(self.width//DIALOG_CENTER_DIVISION_FACTOR, SUBTITLE_Y_POSITION))
         self.screen.blit(subtitle, subtitle_rect)
+
     def _draw_input_fields(self):
         mouse_pos = pygame.mouse.get_pos()
         
@@ -339,6 +340,7 @@ class ConnectionDialog:
         text = self.font_normal.render(button['text'], True, COLOR_WHITE)
         text_rect = text.get_rect(center=button['rect'].center)
         self.screen.blit(text, text_rect)
+        
     def run(self):
         clock = pygame.time.Clock()
         
