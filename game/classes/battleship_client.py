@@ -215,23 +215,12 @@ class BattleshipClient:
     def _attempt_server_connection(self, config):
         host, port = config['host'], config['port']
         self._display_connection_attempt_info(host, port)
-        
-        if self.connect_to_server(host, port):
-            print(f"Conectado exitosamente a {host}:{port}")
-        else:
-            print(f"Error: No se pudo conectar a {host}:{port}")
     
     def connect_to_server(self, host, port):
         return self.network_manager.connect_to_server(host, port)
-
-    def _display_connection_attempt_info(self, host, port):
-        print(f"Intentando conectar al servidor...")
-        print(f"Host: {host}")
-        print(f"Puerto: {port}")
     
     def _handle_start_game_action(self):
-        if self.network_manager.start_game():
-            print("Solicitando inicio de partida...")
+        self.network_manager.start_game()
     
     def _handle_toggle_music_action(self):
         self.menu_screen.toggle_music_mute()
@@ -250,7 +239,6 @@ class BattleshipClient:
     def _disconnect_after_game(self):
         if self.network_manager.connected:
             self.network_manager.disconnect()
-            print("Desconectado del servidor después del juego")
     
     def _reset_menu_state(self):
         self.menu_screen.set_connection_status(False, False)
@@ -270,7 +258,6 @@ class BattleshipClient:
     def _check_connection_status(self):
         if self._should_check_connection():
             if not self.network_manager.connected:
-                print("Detección de desconexión en bucle principal")
                 self.on_server_disconnect()
     
     def _should_check_connection(self):
@@ -328,11 +315,6 @@ class BattleshipClient:
         self._reset_game_state_safely("Error reseteando pantalla de juego")
         self.current_state = "game"
     
-    def _display_game_start_messages(self, data):
-        print(f"MENSAJE GAME_START RECIBIDO: {data}")
-        print("El servidor confirmó el inicio del juego")
-        print("Redirigiendo AMBOS clientes a la pantalla de juego...")
-    
     def _transition_audio_to_game(self):
         pygame.mixer.music.stop()
         self._start_game_music()
@@ -370,14 +352,12 @@ class BattleshipClient:
             self.game_screen.handle_shot_result(data)
     
     def on_game_over(self, data):
-        print(f"Juego terminado: {data}")
         self._stop_game_music()
         self._reset_game_state_safely("Error reseteando pantalla tras game over")
         self._create_and_show_game_over_screen(data)
     
     def _stop_game_music(self):
         pygame.mixer.music.stop()
-        print("Música de juego detenida")
     
     def _create_and_show_game_over_screen(self, data):
         is_winner = data.get('is_winner', False)
