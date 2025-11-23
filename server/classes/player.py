@@ -119,6 +119,7 @@ class Player:
         
     def _process_already_hit(self, x: int, y: int) -> Dict[str, str]:
         return {'result': SHOT_RESULT_MISS}
+    
     def all_ships_sunk(self) -> bool:
         if not self.ships:
             return False

@@ -5,7 +5,6 @@ from .game_screen import GameScreen
 from .menu_screen import MenuScreen
 from .network_manager import NetworkManager
 from .game_over_screen import GameOverScreen
-from .client import Client
 from .battleship_client import BattleshipClient
 
 __all__ = [
@@ -17,6 +16,5 @@ __all__ = [
     'MenuScreen',
     'NetworkManager',
     'GameOverScreen',
-    'Client',
     'BattleshipClient'
 ]

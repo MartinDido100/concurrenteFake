@@ -61,11 +61,13 @@ class NetworkManager:
         self.receive_thread = threading.Thread(target=self.receive_messages)
         self.receive_thread.daemon = THREAD_DAEMON_MODE
         self.receive_thread.start()
+
     def disconnect(self) -> None:
         if self.socket:
             self.connected = False
             self.socket.close()
             self.socket = None
+            
     def send_message(self, message_type: str, data: Optional[Dict[str, Any]] = None) -> bool:
         if not self.connected:
             print(NETWORK_LOG_MESSAGES['NOT_CONNECTED'])

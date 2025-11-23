@@ -38,8 +38,10 @@ class Ship:
         self.name = self.ship_type
     def get_ship_name_by_size(self, size: int) -> str:
         return SHIP_NAMES.get(size, f"Barco de {size} casillas")
+    
     def contains_position(self, x: int, y: int) -> bool:
         return (x, y) in self.positions
+    
     def hit(self, x: int, y: int) -> bool:
         if not self.contains_position(x, y):
             return False
@@ -56,10 +58,13 @@ class Ship:
             self.sunk = True
     def is_sunk(self) -> bool:
         return bool(self.positions) and len(self.hits) >= len(self.positions)
+    
     def get_remaining_positions(self) -> Set[Tuple[int, int]]:
         return set(self.positions) - self.hits
+    
     def get_hit_positions(self) -> Set[Tuple[int, int]]:
         return self.hits.copy()
+    
     def set_positions(self, positions: List[Tuple[int, int]]) -> None:
         self.positions = positions
         
@@ -69,6 +74,7 @@ class Ship:
     
     def set_horizontal(self, horizontal: bool) -> None:
         self.horizontal = horizontal
+        
     def __str__(self) -> str:
         status = self._get_ship_status_string()
         return f"{self.ship_type} [{status}]"
