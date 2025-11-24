@@ -1,13 +1,12 @@
-import socket
+import asyncio
 import json
-import threading
 import sys
 import os
 from typing import Optional, Callable, Any, Dict
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from constants import (DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT, NETWORK_BUFFER_SIZE, 
-                      THREAD_DAEMON_MODE, NETWORK_ENCODING, MESSAGE_BUFFER_SPLIT_LIMIT,
+                      NETWORK_ENCODING, MESSAGE_BUFFER_SPLIT_LIMIT,
                       MESSAGE_TYPES, NETWORK_LOG_MESSAGES, JSON_MESSAGE_DELIMITER)
 
 class NetworkManager:
@@ -17,9 +16,11 @@ class NetworkManager:
         self._initialize_callbacks()
         
     def _initialize_connection_attributes(self) -> None:
-        self.socket: Optional[socket.socket] = None
+        self.reader: Optional[asyncio.StreamReader] = None
+        self.writer: Optional[asyncio.StreamWriter] = None
         self.connected: bool = False
         self.player_id: Optional[str] = None
+        self.receive_task: Optional[asyncio.Task] = None
         
     def _initialize_server_config(self) -> None:
         self.server_host: str = DEFAULT_SERVER_HOST
@@ -33,13 +34,12 @@ class NetworkManager:
         self.on_game_over: Optional[Callable[[Dict[str, Any]], None]] = None
         self.on_server_disconnect: Optional[Callable[[], None]] = None
     
-    def connect_to_server(self, host: Optional[str] = None, port: Optional[int] = None) -> bool:
+    async def connect_to_server(self, host: Optional[str] = None, port: Optional[int] = None) -> bool:
         self._update_server_config(host, port)
         
         try:
-            return self._establish_connection()
+            return await self._establish_connection()
         except Exception as e:
-            print(f"Error conectando al servidor: {e}")
             self.connected = False
             return False
             
@@ -49,37 +49,36 @@ class NetworkManager:
         if port:
             self.server_port = port
             
-    def _establish_connection(self) -> bool:
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.server_host, self.server_port))
+    async def _establish_connection(self) -> bool:
+        self.reader, self.writer = await asyncio.open_connection(self.server_host, self.server_port)
         self.connected = True
         
-        self._start_receive_thread()
+        self._start_receive_task()
         return True
         
-    def _start_receive_thread(self) -> None:
-        self.receive_thread = threading.Thread(target=self.receive_messages)
-        self.receive_thread.daemon = THREAD_DAEMON_MODE
-        self.receive_thread.start()
+    def _start_receive_task(self) -> None:
+        self.receive_task = asyncio.create_task(self.receive_messages())
 
-    def disconnect(self) -> None:
-        if self.socket:
+    async def disconnect(self) -> None:
+        if self.writer:
             self.connected = False
-            self.socket.close()
-            self.socket = None
+            if self.receive_task:
+                self.receive_task.cancel()
+            self.writer.close()
+            await self.writer.wait_closed()
+            self.writer = None
+            self.reader = None
             
-    def send_message(self, message_type: str, data: Optional[Dict[str, Any]] = None) -> bool:
+    async def send_message(self, message_type: str, data: Optional[Dict[str, Any]] = None) -> bool:
         if not self.connected:
-            print(NETWORK_LOG_MESSAGES['NOT_CONNECTED'])
             return False
             
         try:
             message = self._create_message(message_type, data)
-            return self._send_raw_message(message)
+            return await self._send_raw_message(message)
         except (ConnectionResetError, ConnectionAbortedError):
-            return self._handle_connection_error()
+            return await self._handle_connection_error()
         except Exception as e:
-            print(f"Error enviando mensaje: {e}")
             return False
             
     def _create_message(self, message_type: str, data: Optional[Dict[str, Any]]) -> str:
@@ -90,28 +89,26 @@ class NetworkManager:
         }
         return json.dumps(message) + JSON_MESSAGE_DELIMITER
         
-    def _send_raw_message(self, message_json: str) -> bool:
-        print(f"Enviando mensaje al servidor: {message_json.strip()}")
-        self.socket.send(message_json.encode(NETWORK_ENCODING))
-        print(NETWORK_LOG_MESSAGES['SEND_SUCCESS'])
+    async def _send_raw_message(self, message_json: str) -> bool:
+        self.writer.write(message_json.encode(NETWORK_ENCODING))
+        await self.writer.drain()
         return True
         
-    def _handle_connection_error(self) -> bool:
-        print(NETWORK_LOG_MESSAGES['SERVER_DISCONNECTED'])
+    async def _handle_connection_error(self) -> bool:
         self.connected = False
         if self.on_server_disconnect:
             self.on_server_disconnect()
         return False
     
-    def receive_messages(self) -> None:
+    async def receive_messages(self) -> None:
         buffer: str = ""
         
         while self.connected:
-            buffer = self._process_incoming_data(buffer)
+            buffer = await self._process_incoming_data(buffer)
             
-    def _process_incoming_data(self, buffer: str) -> str:
+    async def _process_incoming_data(self, buffer: str) -> str:
         try:
-            data = self._receive_server_data()
+            data = await self._receive_server_data()
             if not data:
                 return buffer
                 
@@ -119,31 +116,28 @@ class NetworkManager:
             return self._process_message_buffer(buffer)
             
         except Exception as e:
-            self._handle_receive_error(e)
+            await self._handle_receive_error(e)
             return buffer
             
-    def _receive_server_data(self) -> str:
+    async def _receive_server_data(self) -> str:
         try:
-            data = self.socket.recv(NETWORK_BUFFER_SIZE)
+            data = await self.reader.read(NETWORK_BUFFER_SIZE)
             if not data:
-                self._handle_server_disconnection()
+                await self._handle_server_disconnection()
                 return ""
                 
             return data.decode(NETWORK_ENCODING)
             
         except (ConnectionResetError, ConnectionAbortedError):
-            self._handle_server_disconnection_error()
+            await self._handle_server_disconnection_error()
             return ""
             
-    def _handle_server_disconnection(self) -> None:
-        print(NETWORK_LOG_MESSAGES['NO_DATA_RECEIVED'])
+    async def _handle_server_disconnection(self) -> None:
         self.connected = False
         if self.on_server_disconnect:
-            print(NETWORK_LOG_MESSAGES['NOTIFYING_DISCONNECT'])
             self.on_server_disconnect()
             
-    def _handle_server_disconnection_error(self) -> None:
-        print(NETWORK_LOG_MESSAGES['CONNECTION_RESET'])
+    async def _handle_server_disconnection_error(self) -> None:
         self.connected = False
         if self.on_server_disconnect:
             self.on_server_disconnect()
@@ -156,16 +150,13 @@ class NetworkManager:
         return buffer
         
     def _handle_complete_message(self, message: str) -> None:
-        print(f"Mensaje recibido del servidor: {message}")
         try:
             parsed_message = json.loads(message)
             self.handle_server_message(parsed_message)
         except json.JSONDecodeError as e:
-            print(f"{NETWORK_LOG_MESSAGES['PARSING_ERROR']}: {e}")
+            pass
             
-    def _handle_receive_error(self, error: Exception) -> None:
-        print(f"Error recibiendo mensaje: {error}")
-        
+    async def _handle_receive_error(self, error: Exception) -> None:
         self.connected = False
         if self.on_server_disconnect:
             self.on_server_disconnect()
@@ -189,23 +180,20 @@ class NetworkManager:
         if handler:
             handler(data)
         else:
-            print(f"Tipo de mensaje desconocido: {message_type}")
+            pass
             
     def _handle_player_connect(self, data: Dict[str, Any]) -> None:
         self.player_id = data.get('player_id')
-        print(f"ID de jugador asignado: {self.player_id}")
         
     def _handle_players_ready(self, data: Dict[str, Any]) -> None:
         if self.on_players_ready:
             self.on_players_ready(data)
             
     def _handle_game_start(self, data: Dict[str, Any]) -> None:
-        print(f"Mensaje GAME_START recibido del servidor: {data}")
         if self.on_game_start:
-            print("Llamando callback on_game_start")
             self.on_game_start(data)
         else:
-            print(NETWORK_LOG_MESSAGES['NO_GAME_START_CALLBACK'])
+            pass
             
     def _handle_game_update(self, data: Dict[str, Any]) -> None:
         if self.on_game_update:
@@ -220,45 +208,35 @@ class NetworkManager:
             self.on_game_over(data)
             
     def _handle_player_disconnect(self, data: Dict[str, Any]) -> None:
-        print(f"MENSAJE PLAYER_DISCONNECT RECIBIDO: {data}")
         disconnected_player = data.get('disconnected_player', NETWORK_LOG_MESSAGES['UNKNOWN_PLAYER'])
         message = data.get('message', NETWORK_LOG_MESSAGES['DEFAULT_DISCONNECT_MESSAGE'])
-        print(f"{message} (Jugador: {disconnected_player})")
         
         if self.on_server_disconnect:
-            print("Llamando callback de desconexión por jugador desconectado")
             self.on_server_disconnect()
         else:
-            print(NETWORK_LOG_MESSAGES['NO_PLAYER_DISCONNECT_CALLBACK'])
+            pass
             
     def _handle_error(self, data: Dict[str, Any]) -> None:
         error_msg = data.get('error', NETWORK_LOG_MESSAGES['DEFAULT_ERROR_MESSAGE'])
-        print(f"Error del servidor: {error_msg}")
     
-    def place_ships(self, ship_positions: Dict[str, Any]) -> bool:
-        return self.send_message(MESSAGE_TYPES['PLACE_SHIPS'], {'ships': ship_positions})
+    async def place_ships(self, ship_positions: Dict[str, Any]) -> bool:
+        return await self.send_message(MESSAGE_TYPES['PLACE_SHIPS'], {'ships': ship_positions})
     
-    def make_shot(self, x: int, y: int) -> bool:
-        return self.send_message(MESSAGE_TYPES['SHOT'], {'x': x, 'y': y})
+    async def make_shot(self, x: int, y: int) -> bool:
+        return await self.send_message(MESSAGE_TYPES['SHOT'], {'x': x, 'y': y})
     
-    def start_game(self) -> bool:
-        self._log_start_game_info()
-        
+    async def start_game(self) -> bool:
         if not self._validate_connection():
             return False
             
-        result = self.send_message(MESSAGE_TYPES['START_GAME'], {})
-        print(f"Resultado del envío de start_game: {result}")
+        result = await self.send_message(MESSAGE_TYPES['START_GAME'], {})
         return result
         
     def _log_start_game_info(self) -> None:
-        print("INICIANDO: Enviando solicitud de inicio de juego al servidor")
-        print(f"Estado de conexión: {self.connected}")
-        print(f"ID del jugador: {self.player_id}")
+        pass
         
     def _validate_connection(self) -> bool:
         if not self.connected:
-            print(NETWORK_LOG_MESSAGES['NO_CONNECTION'])
             return False
         return True
     

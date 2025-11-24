@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import asyncio
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from constants import *
@@ -13,11 +14,12 @@ BACKGROUND_MUSIC_FILE = 'background.mp3'
 from .menu_screen import MenuScreen
 from .game_screen import GameScreen
 from .network_manager import NetworkManager
-from .connection_dialog import ConnectionDialog
 from .game_over_screen import GameOverScreen
 
 class BattleshipClient:
     def __init__(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self._initialize_pygame_systems()
         self._setup_window_configuration()
         self._initialize_game_state()
@@ -63,7 +65,7 @@ class BattleshipClient:
     def _initialize_screens_and_managers(self):
         self.network_manager = NetworkManager()
         self.menu_screen = MenuScreen(self.screen)
-        self.game_screen = GameScreen(self.screen, self.network_manager)
+        self.game_screen = GameScreen(self.screen, self.network_manager, self.loop)
         self.game_over_screen = None
         self.setup_network_callbacks()
     
@@ -85,12 +87,21 @@ class BattleshipClient:
         pygame.mixer.music.play(INFINITE_LOOP)
    
     def run(self):
-        while self.running:
-            self._process_game_events()
-            self._check_connection_status()
-            self._render_current_state()
-            self._update_display_and_clock()
-        self._cleanup_and_exit()
+        try:
+            while self.running:
+                self._process_tasks()
+                self._process_game_events()
+                self._check_connection_status()
+                self._render_current_state()
+                self._update_display_and_clock()
+        finally:
+            self._cleanup_and_exit()
+    
+    def _process_tasks(self):
+        try:
+            self.loop.run_until_complete(asyncio.sleep(0))
+        except RuntimeError:
+            pass
     
     def _process_game_events(self):
         events = pygame.event.get()
@@ -160,7 +171,7 @@ class BattleshipClient:
         return {}
     
     def _recreate_game_screen(self):
-        self.game_screen = GameScreen(self.screen, self.network_manager)
+        self.game_screen = GameScreen(self.screen, self.network_manager, self.loop)
     
     def _restore_game_state(self, saved_state):
         self.game_screen.game_phase = saved_state['game_phase']
@@ -197,30 +208,24 @@ class BattleshipClient:
     
     def _process_menu_action(self, action):
         if action == "connect":
-            self._handle_connect_action()
+            self.loop.create_task(self._handle_connect_action())
         elif action == "start_game":
-            self._handle_start_game_action()
+            self.loop.create_task(self._handle_start_game_action())
         elif action == "toggle_music":
             self._handle_toggle_music_action()
     
-    def _handle_connect_action(self):
-        connection_dialog = ConnectionDialog(self.screen)
-        connection_config = connection_dialog.run()
-        
-        if connection_config:
-            self._attempt_server_connection(connection_config)
-        else:
-            print("Conexión cancelada por el usuario")
+    async def _handle_connect_action(self):
+        await self.connect_to_server("127.0.0.1", 8888)
     
     def _attempt_server_connection(self, config):
         host, port = config['host'], config['port']
-        self._display_connection_attempt_info(host, port)
+        return self.connect_to_server(host, port)
     
-    def connect_to_server(self, host, port):
-        return self.network_manager.connect_to_server(host, port)
+    async def connect_to_server(self, host, port):
+        return await self.network_manager.connect_to_server(host, port)
     
-    def _handle_start_game_action(self):
-        self.network_manager.start_game()
+    async def _handle_start_game_action(self):
+        await self.network_manager.start_game()
     
     def _handle_toggle_music_action(self):
         self.menu_screen.toggle_music_mute()
@@ -228,17 +233,17 @@ class BattleshipClient:
     def _handle_game_over_events(self, event):
         action = self.game_over_screen.handle_event(event)
         if action == "accept" or self.game_over_screen.auto_return:
-            self._handle_game_over_accept()
+            self.loop.create_task(self._handle_game_over_accept())
     
-    def _handle_game_over_accept(self):
-        self._disconnect_after_game()
+    async def _handle_game_over_accept(self):
+        await self._disconnect_after_game()
         self._reset_menu_state()
         self._restart_menu_music()
         self._return_to_menu()
     
-    def _disconnect_after_game(self):
+    async def _disconnect_after_game(self):
         if self.network_manager.connected:
-            self.network_manager.disconnect()
+            await self.network_manager.disconnect()
     
     def _reset_menu_state(self):
         self.menu_screen.set_connection_status(False, False)
@@ -292,6 +297,16 @@ class BattleshipClient:
     
     def _cleanup_and_exit(self):
         pygame.mixer.music.stop()
+        
+        # Limpiar tareas asyncio pendientes
+        pending_tasks = [task for task in asyncio.all_tasks(self.loop) if not task.done()]
+        for task in pending_tasks:
+            task.cancel()
+        
+        # Cerrar el loop asyncio
+        if not self.loop.is_closed():
+            self.loop.close()
+            
         pygame.mixer.quit()
         pygame.quit()
         sys.exit()
@@ -310,7 +325,6 @@ class BattleshipClient:
         self.menu_screen.set_connection_status(connected, players_ready)
     
     def on_game_start(self, data):
-        self._display_game_start_messages(data)
         self._transition_audio_to_game()
         self._reset_game_state_safely("Error reseteando pantalla de juego")
         self.current_state = "game"
@@ -348,8 +362,11 @@ class BattleshipClient:
             self.game_screen.set_my_turn(is_my_turn)
     
     def on_shot_result(self, data):
-        if hasattr(self.game_screen, 'handle_shot_result'):
-            self.game_screen.handle_shot_result(data)
+        try:
+            if hasattr(self.game_screen, 'handle_shot_result') and data:
+                self.game_screen.handle_shot_result(data)
+        except Exception:
+            pass
     
     def on_game_over(self, data):
         self._stop_game_music()

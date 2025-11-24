@@ -209,8 +209,8 @@ MENU_TEXT = {
     'STATUS_DISCONNECTED': "Desconectado del servidor",
     'STATUS_CONNECTING': "Conectado - Esperando segundo jugador...",
     'STATUS_READY': "¡2 jugadores conectados! Listo para iniciar",
-    'MUSIC_MUTED': "🔇 Música silenciada",
-    'MUSIC_UNMUTED': "🔊 Música reactivada",
+    'MUSIC_MUTED': "Música silenciada",
+    'MUSIC_UNMUTED': "Música reactivada",
     'ASSET_ERROR': "No se pudo cargar menu.png, usando fondo de color"
 }
 
