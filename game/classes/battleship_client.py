@@ -20,12 +20,21 @@ class BattleshipClient:
     def __init__(self):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
+        self.server_host = DEFAULT_SERVER_HOST
+        self.server_port = DEFAULT_SERVER_PORT
         self._initialize_pygame_systems()
         self._setup_window_configuration()
         self._initialize_game_state()
         self._initialize_screens_and_managers()
         self._setup_audio_system()
     
+
+    def set_connection_params(self, host=None, port=None):
+        if host:
+            self.server_host = host
+        if port:
+            self.server_port = port
+
     def _initialize_pygame_systems(self):
         pygame.init()
         self._initialize_audio_mixer()
@@ -215,7 +224,7 @@ class BattleshipClient:
             self._handle_toggle_music_action()
     
     async def _handle_connect_action(self):
-        await self.connect_to_server("127.0.0.1", 8888)
+        await self.connect_to_server(self.server_host, self.server_port)
     
     def _attempt_server_connection(self, config):
         host, port = config['host'], config['port']

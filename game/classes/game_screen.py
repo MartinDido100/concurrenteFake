@@ -119,7 +119,7 @@ class GameScreen:
             if self._can_shoot_at_cell(cell):
                 if self.loop:
                     self.loop.create_task(self.network_manager.make_shot(cell[0], cell[1]))
-                self.my_turn = False  # Desactivar turno inmediatamente
+                self.my_turn = False
         except Exception:
             pass
             
@@ -382,7 +382,7 @@ class GameScreen:
                 color = (255, 200, 100)
                 status = "ACTIVO"
             
-            ship_text = ship_font.render(f"• {ship['name']}", True, color)
+            ship_text = ship_font.render(f" {ship['name']}", True, color)
             status_text = ship_font.render(f"  {status}", True, (200, 200, 200))
             
             self.screen.blit(ship_text, (right_panel_x + 10, right_panel_y + y_offset))
