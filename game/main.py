@@ -8,8 +8,29 @@ sys.path.append(os.path.dirname(__file__))
 sys.dont_write_bytecode = True
 
 def get_connection_config():
+    # Banner
+    print("\n" + "="*60)
+    print("██████╗  █████╗ ████████╗ █████╗ ██╗     ██╗      █████╗ ")
+    print("██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██║     ██║     ██╔══██╗")
+    print("██████╔╝███████║   ██║   ███████║██║     ██║     ███████║")
+    print("██╔══██╗██╔══██║   ██║   ██╔══██║██║     ██║     ██╔══██║")
+    print("██████╔╝██║  ██║   ██║   ██║  ██║███████╗███████╗██║  ██║")
+    print("╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝")
+    print("███╗   ██╗ █████╗ ██╗   ██╗ █████╗ ██╗     ")
+    print("████╗  ██║██╔══██╗██║   ██║██╔══██╗██║     ")
+    print("██╔██╗ ██║███████║██║   ██║███████║██║     ")
+    print("██║╚██╗██║██╔══██║╚██╗ ██╔╝██╔══██║██║     ")
+    print("██║ ╚████║██║  ██║ ╚████╔╝ ██║  ██║███████╗")
+    print("╚═╝  ╚═══╝╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝╚══════╝")
+    print("="*60 + "\n")
+    
     while True:
         try:
+            local_server = input("¿Tenes el servidor levantado en local? (s/N): ").strip().lower()
+            
+            if local_server in ['s', 'si', 'yes', 'y']:
+                return DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT
+            
             host_input = input(f"Host del servidor (default: {DEFAULT_SERVER_HOST}): ").strip()
             host = host_input if host_input else DEFAULT_SERVER_HOST
             

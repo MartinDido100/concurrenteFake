@@ -1,5 +1,9 @@
-import pygame
 import os
+import sys
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+sys.dont_write_bytecode = True
+
+import pygame
 
 MIN_WINDOW_WIDTH = 1200
 MIN_WINDOW_HEIGHT = 800
